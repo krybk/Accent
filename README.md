@@ -16,12 +16,25 @@ add a server, the app:
 1. connects over SSH with that password;
 2. generates a key and puts the private half in the phone's key store;
 3. appends the public half to `authorized_keys`;
-4. installs Docker if missing, brings the stack up, issues a token;
-5. fetches the token and certificate, then wipes the password from memory.
+4. reconnects with the key alone, and drops the password there and then;
+5. installs Docker if missing and clones this repository at a pinned ref;
+6. generates the gateway token itself, writes it into the stack's `.env`, and
+   brings the stack up;
+7. reads the certificate the stack issued itself.
+
+The token is generated **on the phone** and handed to the server, not the other
+way round: nothing then has to read a credential back out of a file over SSH, and
+the app already holds the one it will present. The certificate is the reverse —
+it is the server's own, so it is read once and pinned.
 
 After that the app only ever talks to the gateway — over TLS, with a token and a
 pinned certificate. A stolen phone does not grant root, and the token can be
 revoked from the server.
+
+Adding the same server twice is safe. Each step checks before it acts, so an
+interrupted bootstrap can simply be run again: the key is not appended a second
+time, an existing clone is fetched rather than refused, and the stack keeps the
+password its database was initialised with.
 
 ## Status
 
@@ -31,14 +44,15 @@ that needs.
 Standing up: the gateway (config, auth, routing, upstream requests, a container
 stack that builds and answers a liveness probe), the shared `protocol` package
 (model catalogue, chat types), and on the app side server profiles with their
-key material kept in the Android Keystore. 47 tests across the three packages.
+key material kept in the Android Keystore, plus the SSH bootstrap that deploys
+the stack onto a server. 91 tests across the three packages.
 
 CI runs four gates on every pull request and every push to `main`: a secret
 scan, the two Dart packages, the Flutter app including a debug APK build, and
 the gateway image. Failures on `main` are picked up without a human — see below.
 
-Still to come: the SSH bootstrap that turns a root password into a deployed
-stack, and the chat itself.
+Still to come: the screen that drives the bootstrap and shows its progress, and
+the chat itself.
 
 ## Working through Issues
 
