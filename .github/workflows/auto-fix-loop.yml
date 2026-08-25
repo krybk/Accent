@@ -207,6 +207,50 @@ jobs:
 
             core.info(`Filed #${issue.number} for: ${signature}`);
 
+  # A green CI run on main settles every "CI red on main" Issue at once: the
+  # signature in the title is, by definition, no longer failing. Left to a human
+  # these accumulate, and a stale one is not merely untidy — deduplication keys
+  # on the title, so an Issue nobody closed suppresses the nudge for the next
+  # real occurrence of that same failure.
+  #
+  # Ones carrying `needs-human` are left alone. That label means a person was
+  # asked to look, and a passing run does not answer whatever they were asked.
+  close-stale-ci-failures:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v8
+        name: Close CI-failure Issues that green has settled
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run = context.payload.workflow_run;
+
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: 'ci-failure', per_page: 100,
+            });
+
+            for (const issue of open) {
+              if (issue.labels.some((l) => l.name === 'needs-human')) {
+                core.info(`#${issue.number}: needs-human — leaving it open.`);
+                continue;
+              }
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `CI is green on \`main\` at ${run.head_sha.slice(0, 7)} — closing as settled.`,
+              });
+              await github.rest.issues.update({
+                owner, repo, issue_number: issue.number,
+                state: 'closed', state_reason: 'completed',
+              });
+              core.info(`#${issue.number}: closed.`);
+            }
+
   handle-ci-result:
     # Only CI runs that came from a pull request. Without the second condition
     # this job also woke on every push to main, where there is no PR to merge
