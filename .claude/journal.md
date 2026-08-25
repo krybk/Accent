@@ -122,6 +122,72 @@ Decision: not yet settled. What is needed first is per-attempt logging of model
 and actual cost from `/api/v1/generation`, because the real success rate is
 currently unknown and the ladder would otherwise be a guess.
 
+## 2026-08-25. Stack changed from Tauri to Flutter, after a probe
+
+I originally recommended Tauri v2 + React, leaning on "one stack for the whole
+pipeline". That argument turned out to be weaker than it sounded: nothing in
+`.github/`, `scripts/` or `.claude/` depends on the app's language, and
+`CLAUDE.md` already declares `app/` and `gateway/` as rewritten per app. The
+template's value is in the scaffolding, so changing the client language costs it
+nothing.
+
+Flutter also erases the two risks named in the plan as most likely to cost time.
+Secure key storage stops being a hand-written Kotlin plugin over Android Keystore
+and becomes `flutter_secure_storage`; voice capture stops being a fight with
+WebView permissions and becomes the `record` package. Image, video and file
+pickers are equally off-the-shelf, which turns most of milestone 2 into assembly
+rather than binding-writing.
+
+The one real unknown was SSH in pure Dart, so it was probed rather than assumed —
+`dartssh2` 2.22.5 against a throwaway local account, all seven links of the
+bootstrap chain:
+
+| Step | Result |
+| --- | --- |
+| connect with password | pass |
+| run a remote command | pass |
+| generate an ed25519 key | pass (32 B public, 64 B private) |
+| export to PEM and read back | pass |
+| upload a file over SFTP | pass |
+| append to authorized_keys | pass |
+| reconnect using the key alone | pass |
+
+Two API facts worth keeping, because both would otherwise be rediscovered the
+hard way:
+
+- **dartssh2 reads keys but does not generate them.** There is no
+  `SSHKeyPair.generate`. Build the key yourself and hand
+  `OpenSSHEd25519KeyPair` the raw bytes. Use `pinenacl` for it — that is the same
+  ed25519 implementation dartssh2 signs with, so no second crypto library enters
+  the tree. The private half must be the 64-byte seed‖public form, not the bare
+  32-byte seed.
+- **An authorized_keys line needs SSH wire format**, not the raw 32 bytes:
+  length-prefixed `"ssh-ed25519"` followed by the length-prefixed key, then
+  base64 of that. Get it wrong and sshd ignores the line in silence, which
+  presents as a dartssh2 authentication bug rather than an encoding bug.
+
+Probe kept at `app/tool/ssh_bootstrap_probe.dart`: it is the skeleton the real
+bootstrap grows from, and it encodes both gotchas above in working form.
+
+**Follow-up the same day: the gateway moved to Dart too.** My first version of
+this entry listed "a third language in the pipeline" as the cost of the decision.
+That cost was self-inflicted — it only exists if the gateway stays Rust. Checked
+the server-side story rather than assuming: `shelf` has 8.7M downloads in 30 days
+at 160/160 pub points, `postgres` 556k at 160/160. Mature enough.
+
+So Dart on both sides, plus a shared `protocol` package. The real win is not
+saving a language, it is that request and response types are shared code: a
+protocol change breaks compilation instead of production. Rust would have bought
+nothing measurable here — the gateway is I/O-bound, proxying streams and running
+Docker commands — while costing a hand-maintained duplicate of every type.
+Anything genuinely CPU-heavy (speech-to-text) runs in its own container anyway.
+
+**Still open:** the probe ran against `dartssh2` 2.22.5 because the pubspec
+pinned `^2.14.0`, while 3.3.1 is current. Re-verify the chain on 3.x when
+scaffolding the app; do not assume the API is unchanged across a major version.
+
+Timing made the whole switch cheap: no application code existed yet.
+
 ## 2026-08-25. Constraints of the target environment
 
 Verified on the project's working server (4 cores, 8 GB RAM): Docker is present,

@@ -19,18 +19,39 @@ fork it, drop the application half, and keep the scaffolding.
 
 ## Stack
 
-- **App**: Tauri v2, Rust core, React + TypeScript UI. Android is built in CI
-  only — the server has neither Java nor the Android SDK.
-- **Gateway**: Rust (axum) in Docker, alongside LiteLLM, Postgres and Caddy.
-- **SSH**: `russh` in the app core. The root password is entered once during
+Dart on both sides. One language, one toolchain, and the chat protocol types are
+literally shared code rather than two definitions kept in sync by hand.
+
+- **App**: Flutter. Android is built in CI only — the server has neither Java nor
+  the Android SDK.
+- **Gateway**: Dart (`shelf`), AOT-compiled into a container, alongside LiteLLM,
+  Postgres and Caddy.
+- **Shared**: a `protocol` package used by both, so a change to a request or
+  response shape breaks compilation instead of production.
+- **SSH**: `dartssh2` in the app. The root password is entered once during
   bootstrap and is never stored on the device.
+
+Two notes on `dartssh2`, both verified rather than assumed (see
+`.claude/journal.md`): it reads keys but cannot generate them — build the key
+with `pinenacl` and hand `OpenSSHEd25519KeyPair` the raw bytes, private half in
+the 64-byte seed‖public form. And an `authorized_keys` line needs SSH wire
+format, not the bare 32 bytes; get it wrong and sshd ignores the line silently.
+
+The gateway is deliberately not Rust. It is I/O-bound — proxying streams,
+running Docker commands, moving files — so Rust would buy nothing measurable and
+cost a second language plus a hand-maintained copy of every protocol type.
+Anything genuinely CPU-heavy (speech-to-text) runs in its own container.
 
 ## Commands
 
-- `npm test` — frontend tests
-- `npm run typecheck` — type check
+- `dart analyze` — static analysis across app, gateway and protocol
+- `flutter test` (in `app/`) — app tests
+- `dart test` (in `gateway/`) — gateway tests
 - `./scripts/check-secrets.sh` — secrets in the index (runs in CI)
 - `node scripts/cache-canary.js [model]` — is prompt caching actually working
+
+The canary stays in Node because it talks to an HTTP API and has no reason to
+pull the Dart toolchain into a check that must run before anything is built.
 
 ## The repository is public
 

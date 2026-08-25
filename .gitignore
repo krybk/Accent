@@ -23,12 +23,15 @@ gateway/caddy/config/
 
 # Build output
 node_modules/
-dist/
-target/
-app/src-tauri/target/
-app/src-tauri/gen/android/app/build/
+.dart_tool/
+build/
+app/android/.gradle/
+app/android/local.properties
 *.apk
 *.aab
+# pubspec.lock is committed for apps and the gateway (reproducible builds) but
+# not for the shared library package, per Dart convention.
+protocol/pubspec.lock
 
 # Tooling
 .DS_Store
