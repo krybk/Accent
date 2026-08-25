@@ -44,6 +44,15 @@ jobs:
       - name: Shellcheck
         run: shellcheck scripts/*.sh
 
+      # Here for the same reason, and cheap for the same reason: Python 3 is on
+      # the image and these tests are stdlib only, so there is nothing to set up.
+      # What they guard is the parser the DeepSeek worker writes files with. Its
+      # failure modes are the ones that produce a half-written file, and they are
+      # the one part of that workflow whose behaviour must be verifiable without
+      # spending an API call.
+      - name: DeepSeek apply parser
+        run: python3 scripts/deepseek_apply_test.py
+
   # protocol and gateway share one job. They are both plain Dart packages that
   # analyse and test in seconds, and gateway depends on protocol by path, so a
   # separate runner would only re-fetch the same dependencies.

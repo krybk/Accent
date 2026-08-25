@@ -50,10 +50,49 @@ genuinely CPU-heavy (speech-to-text) runs in its own container.
 - `dart format --output=none --set-exit-if-changed protocol gateway app`
 - `dart test` in `protocol/` and `gateway/`; `flutter test` in `app/`
 - `./scripts/check-secrets.sh` — secrets in the index (runs in CI)
+- `python3 scripts/deepseek_apply_test.py` — the DeepSeek worker's parser (runs
+  in CI)
 - `node scripts/cache-canary.js [model]` — is prompt caching actually working
 
 The canary stays in Node because it talks to an HTTP API and has no reason to
 pull the Dart toolchain into a check that must run before anything is built.
+
+### Asking DeepSeek for a small change
+
+`deepseek.yml` puts a second, much cheaper model behind a comment on an Issue, so
+a config edit, a documentation pass or tests against a module that already exists
+stop costing a full Sonnet session. Comment on an Issue — not on a pull request,
+which it refuses — from a login on its allowlist:
+
+```
+@deepseek Rename the field to `serverId`, keeping the JSON key unchanged.
+
+files:
+- protocol/lib/src/server.dart
+- gateway/lib/src/handler.dart
+```
+
+The instruction is everything between the trigger phrase and the `files:` line,
+and each path is a list item under it. What is worth knowing before using it:
+
+- It is **one API call** to `deepseek-chat`, not an agent. It reads the files you
+  named, asks for their complete new contents, and writes them back. It cannot
+  explore the repository, run a command, or decide that a different file is the
+  one that needs changing.
+- At most **5 files** and **200 KB** of input. `.github/workflows/**`,
+  `scripts/check-secrets.sh` and `.gitignore` are refused whatever the request
+  says, as is any path that is a symlink or reaches outside the worktree.
+- Either the whole answer applies or none of it does. Anything the parser cannot
+  attribute — a missing file, a duplicate block, an unclosed fence, a truncated
+  answer — is a refusal with no branch. A half-applied patch is worse than none.
+- The relevant gates run before the push, so it does not open a pull request
+  already known to be red.
+- The branch is under `deepseek/`, which is what keeps it away from auto-merge:
+  only `auto/` branches get labelled `auto-fixed`, and only that label merges. Its
+  pull requests are labelled `ready-to-review` and wait for a human.
+- Every outcome is one comment on the Issue. A missing `DEEPSEEK_API_KEY` is
+  reported there rather than as a red run — nothing subscribes to this workflow's
+  conclusion, so a failed run would notify nobody.
 
 ## The repository is public
 
@@ -141,7 +180,8 @@ direction of failure.
 | Secret | Used by | Purpose |
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | `claude.yml` | model access |
-| `AUTOMATION_TOKEN` | `claude.yml`, `auto-fix-loop.yml` | a PAT, so PRs it opens actually start CI. It must belong to a login in `ALLOWED_AUTHORS`, or the retry comment it posts will be refused by the author gate |
+| `DEEPSEEK_API_KEY` | `deepseek.yml` | the second model's key. Absent, the worker says so in a comment on the Issue and ends green — nothing watches its conclusion, so failing would tell nobody |
+| `AUTOMATION_TOKEN` | `claude.yml`, `auto-fix-loop.yml`, `deepseek.yml` | a PAT, so PRs it opens actually start CI. It must belong to a login in `ALLOWED_AUTHORS`, or the retry comment it posts will be refused by the author gate |
 | `ANDROID_KEYSTORE_BASE64` | `release.yml` | release signing |
 | `ANDROID_KEYSTORE_PASSWORD` | `release.yml` | release signing |
 | `ANDROID_KEY_ALIAS` | `release.yml` | release signing |

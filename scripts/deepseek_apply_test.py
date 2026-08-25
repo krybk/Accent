@@ -17,6 +17,10 @@ import sys
 import tempfile
 import unittest
 
+# Before the import below, and the reason is mundane: `.gitignore` has no rule
+# for `__pycache__`, and a stray `.pyc` next to the module is one `git add -A`
+# away from being committed. Nothing here is slow enough to want a cache.
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import deepseek_apply as worker  # noqa: E402
