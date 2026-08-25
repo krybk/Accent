@@ -1,6 +1,8 @@
 /// Model catalogue and service status types.
 library;
 
+import 'dart:convert';
+
 /// A model the gateway can route to.
 ///
 /// [minCacheableTokens] is not decoration. Below it a provider silently declines
