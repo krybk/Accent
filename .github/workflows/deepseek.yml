@@ -53,17 +53,29 @@ jobs:
       # Exact model ID, never a `-latest` alias: an alias will one day resolve to
       # a pricier model with nothing in the logs changing.
       MODEL: deepseek-chat
-      COMMENT_FILE: ${{ runner.temp }}/comment.md
-      BODY_FILE: ${{ runner.temp }}/request-body.txt
-      PAYLOAD_FILE: ${{ runner.temp }}/payload.json
-      PATHS_FILE: ${{ runner.temp }}/paths.txt
-      RESPONSE_FILE: ${{ runner.temp }}/response.json
-      MESSAGE_FILE: ${{ runner.temp }}/message.md
-      GATE_LOG: ${{ runner.temp }}/gate.log
-      COMMIT_FILE: ${{ runner.temp }}/commit.txt
-      PR_BODY_FILE: ${{ runner.temp }}/pr-body.md
 
     steps:
+      # The `runner` context is only valid inside a step (its `if`, `env`, or
+      # `container`/`services` config) — not in a job-level `env:` block. Put
+      # there, it is not a runtime error but a workflow-file validation
+      # failure: the whole file is rejected before any job is created, no run
+      # ever starts, and nothing says why. Computing the paths here instead,
+      # once, keeps every later step's `$COMMENT_FILE`-style reference
+      # unchanged.
+      - name: Scratch file paths for this run
+        run: |
+          {
+            echo "COMMENT_FILE=$RUNNER_TEMP/comment.md"
+            echo "BODY_FILE=$RUNNER_TEMP/request-body.txt"
+            echo "PAYLOAD_FILE=$RUNNER_TEMP/payload.json"
+            echo "PATHS_FILE=$RUNNER_TEMP/paths.txt"
+            echo "RESPONSE_FILE=$RUNNER_TEMP/response.json"
+            echo "MESSAGE_FILE=$RUNNER_TEMP/message.md"
+            echo "GATE_LOG=$RUNNER_TEMP/gate.log"
+            echo "COMMIT_FILE=$RUNNER_TEMP/commit.txt"
+            echo "PR_BODY_FILE=$RUNNER_TEMP/pr-body.md"
+          } >> "$GITHUB_ENV"
+
       # The shape of this gate is copied from claude.yml, including the order of
       # the checks, because each part of it is load-bearing.
       - name: Decide whether the worker should run
