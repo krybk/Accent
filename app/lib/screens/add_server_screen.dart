@@ -163,110 +163,120 @@ class _AddServerScreenState extends State<AddServerScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Add a server')),
+      // A scroll view that builds every child, not a ListView: a field that has
+      // scrolled out of a lazy list does not exist, so the form would neither
+      // validate it nor know it is there, while its controller still holds
+      // whatever was typed into it.
       body: Form(
         key: _formKey,
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              key: AddServerScreen.nameField,
-              controller: _name,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                helperText: 'Optional — the host is used when left blank',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddServerScreen.hostField,
-              controller: _host,
-              autocorrect: false,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Host',
-                hintText: 'name.example.com or 192.0.2.10',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) => _required(value, 'host'),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddServerScreen.portField,
-              controller: _port,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'SSH port',
-                border: OutlineInputBorder(),
-              ),
-              validator: _validatePort,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddServerScreen.usernameField,
-              controller: _username,
-              autocorrect: false,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Username',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) => _required(value, 'username'),
-            ),
-            const SizedBox(height: 24),
-            Text('Used once, never stored', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            TextFormField(
-              key: AddServerScreen.passwordField,
-              controller: _password,
-              obscureText: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'Root password',
-                helperText:
-                    'The bootstrap installs a key with it and then drops it',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) => _required(value, 'root password'),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              key: AddServerScreen.providerKeyField,
-              controller: _providerKey,
-              obscureText: true,
-              autocorrect: false,
-              enableSuggestions: false,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _submit(),
-              decoration: const InputDecoration(
-                labelText: 'OpenRouter API key',
-                helperText: 'The stack will not start without it',
-                border: OutlineInputBorder(),
-              ),
-              validator: (value) => _required(value, 'OpenRouter API key'),
-            ),
-            if (_failure != null) ...[
-              const SizedBox(height: 16),
-              Text(
-                _failure!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.error,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                key: AddServerScreen.nameField,
+                controller: _name,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  helperText: 'Optional — the host is used when left blank',
+                  border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddServerScreen.hostField,
+                controller: _host,
+                autocorrect: false,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Host',
+                  hintText: 'name.example.com or 192.0.2.10',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => _required(value, 'host'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddServerScreen.portField,
+                controller: _port,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'SSH port',
+                  border: OutlineInputBorder(),
+                ),
+                validator: _validatePort,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddServerScreen.usernameField,
+                controller: _username,
+                autocorrect: false,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => _required(value, 'username'),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Used once, never stored',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                key: AddServerScreen.passwordField,
+                controller: _password,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Root password',
+                  helperText:
+                      'The bootstrap installs a key with it and then drops it',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => _required(value, 'root password'),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: AddServerScreen.providerKeyField,
+                controller: _providerKey,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submit(),
+                decoration: const InputDecoration(
+                  labelText: 'OpenRouter API key',
+                  helperText: 'The stack will not start without it',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => _required(value, 'OpenRouter API key'),
+              ),
+              if (_failure != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _failure!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              FilledButton(
+                key: AddServerScreen.submitButton,
+                onPressed: _saving ? null : _submit,
+                child: Text(_saving ? 'Saving…' : 'Save the server'),
+              ),
             ],
-            const SizedBox(height: 24),
-            FilledButton(
-              key: AddServerScreen.submitButton,
-              onPressed: _saving ? null : _submit,
-              child: Text(_saving ? 'Saving…' : 'Save the server'),
-            ),
-          ],
+          ),
         ),
       ),
     );
