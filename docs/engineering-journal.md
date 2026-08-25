@@ -294,3 +294,34 @@ an awaited generic call into a nullable local makes inference pick the nullable
 type parameter, so the value never promotes and every later use is an error. The
 sessions are held in nullable locals for cleanup and in non-nullable locals for
 work, which is why both exist.
+
+## 2026-08-25. A form field in a lazy list is not validated
+
+The add-server form was first built as a `ListView`, which is the reflex for a
+column of fields taller than a phone screen. It is the wrong reflex, and the
+failure is silent in the worst direction.
+
+`Form.validate()` walks the `FormField` states that are **registered with it**,
+and a field registers itself when its element is built. A `ListView` only builds
+what is near the viewport, so a field that has scrolled off is not in the tree and
+not registered — while its `TextEditingController` still holds whatever was typed
+into it, because the controller is owned by the `State` above the list. The result
+is a form that validates the four fields you can see, ignores the two you cannot,
+and then reads all six on submit. Scroll position decides whether validation
+happens.
+
+`SingleChildScrollView` with a `Column` builds every child and scrolls the lot, so
+validation covers the form regardless of where it is scrolled to. The cost is that
+all children are laid out at once, which for six fields is nothing; a genuinely
+long form needs a different shape (a stepper, or a page per group), not a lazy
+list.
+
+Two consequences for tests, both of which apply to any Flutter form here:
+
+- `enterText` does not require the field to be visible — it sets the binding's
+  focused editable directly — but it does require the element to exist. Under a
+  `ListView` the same test would pass or fail depending on the field's position,
+  which reads as flakiness rather than as the bug above.
+- `tap` does require visibility, so a submit button below the fold needs
+  `ensureVisible` first. That is a test-harness detail, not a hint about the
+  widget: the default test surface is 800×600, smaller than most phones.
