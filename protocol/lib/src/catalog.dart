@@ -17,9 +17,9 @@ class ModelInfo {
     required this.contextWindow,
   });
 
-  final String    id;
+  final String id;
   final String displayName;
-    final double inputUsdPerMillion;
+  final double inputUsdPerMillion;
   final double outputUsdPerMillion;
   final double cacheReadUsdPerMillion;
 
