@@ -1,0 +1,114 @@
+name: Task intake
+
+# Turns a file in `.github/tasks/` into an Issue, so work can be commissioned
+# by pushing a task rather than by typing into the web UI. The Issue then goes
+# through the ordinary path: a session picks it up, opens a pull request, and
+# the merge closes the Issue.
+#
+# Why a file and not just an Issue written by hand: a task specification is
+# worth reviewing in a diff and worth keeping next to the code it describes. It
+# also means whoever writes the task needs push access and nothing else — no
+# API token, which is exactly the situation this was built in.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/tasks/**.md']
+
+# Two pushes in quick succession would otherwise race and file the same task
+# twice: both runs would check for a duplicate before either had created one.
+concurrency:
+  group: task-intake
+  cancel-in-progress: false
+
+jobs:
+  file:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: The automation PAT is present
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$AUTOMATION_TOKEN" ]; then
+            echo "::error::secrets.AUTOMATION_TOKEN is not set. An Issue filed" \
+                 "with GITHUB_TOKEN would trigger no workflow, so claude.yml" \
+                 "would never see it and the task would sit unread."
+            exit 1
+          fi
+
+      - name: File an Issue for every task not yet filed
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const dir = '.github/tasks';
+            const { owner, repo } = context.repo;
+
+            // Every task file is considered on every run, not only the ones this
+            // push touched. Deduplication is by marker rather than by diff, so a
+            // re-push, a revert or a manual re-run cannot file a second copy —
+            // and a task added while the workflow was broken is not lost.
+            const files = fs.readdirSync(dir)
+              .filter((name) => name.endsWith('.md') && name !== 'README.md')
+              .sort();
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'all', labels: 'task', per_page: 100,
+            });
+
+            for (const name of files) {
+              const rel = path.posix.join(dir, name);
+              const marker = `<!-- task: ${rel} -->`;
+              const already = existing.find((i) => (i.body || '').includes(marker));
+              if (already) {
+                core.info(`${rel}: already #${already.number}.`);
+                continue;
+              }
+
+              const text = fs.readFileSync(rel, 'utf8');
+              const heading = text.match(/^#\s+(.+)$/m);
+              if (!heading) {
+                core.warning(`${rel}: no "# Title" heading — skipping.`);
+                continue;
+              }
+
+              // No `<!-- automated-request -->` marker here, deliberately. That
+              // marker exists to keep the CI-repair loop on Sonnet so it cannot
+              // escalate itself; a commissioned feature is the case the model
+              // routing reserves Opus for. See claude.yml.
+              const body = [
+                marker,
+                `@claude ${heading[1]}`,
+                '',
+                `Specification: [\`${rel}\`](${context.serverUrl}/${owner}/${repo}/blob/${context.sha}/${rel}).`,
+                'It is reproduced below, and the file is the authority if the two',
+                'ever disagree.',
+                '',
+                'Finish by opening a pull request with `gh pr create --base main`',
+                `and \`Fixes #__ISSUE__\` in the body. A branch without a pull`,
+                'request is work nobody collects.',
+                '',
+                '---',
+                '',
+                text.trim(),
+              ].join('\n');
+
+              const { data: issue } = await github.rest.issues.create({
+                owner, repo, title: heading[1], body, labels: ['task'],
+              });
+
+              // The body must name its own number for the closing line to be
+              // parsed on merge, and that number does not exist until now.
+              await github.rest.issues.update({
+                owner, repo, issue_number: issue.number,
+                body: body.replaceAll('__ISSUE__', String(issue.number)),
+              });
+
+              core.info(`${rel}: filed #${issue.number}.`);
+            }
