@@ -98,6 +98,55 @@ Sonnet a cache write costs $0.0123 against $0.0010 for a read of the same prefix
 — a factor of twelve. Therefore a working cache matters more than the choice of
 tier, and `cache-canary.js` runs after any change to prompts.
 
+## Releasing Android binaries
+
+A release is a tag. Bump `version:` in `app/pubspec.yaml`, tag `v<version>`, and
+push the tag; `release.yml` builds signed APKs and attaches them to a GitHub
+release. The tag and the pubspec version must agree — the workflow refuses
+otherwise, because publishing a `v0.2.0` tag containing 0.1.0 binaries is a
+mistake nobody notices until a user reports the wrong version.
+
+The `+N` build number after the version is what Android uses to decide which
+build is newer. It must increase on every published build, even when the
+semantic version does not.
+
+Four APKs are published: one per architecture (`arm64-v8a`, `armeabi-v7a`,
+`x86_64`) and a universal one. Split builds exist because a universal APK
+carries native code for every architecture — measured at 43 MB against 16 MB for
+arm64 alone, for no benefit on any single device. `SHA256SUMS.txt` ships
+alongside, so a download can be verified without trusting the page it came from.
+
+### Signing, and why it cannot be skipped
+
+Android identifies an app by its signature, and it refuses an upgrade whose
+signature changed. Two consequences that are worth stating plainly:
+
+- A release signed with the debug key installs fine, so nobody notices — until
+  the first real update, which then cannot be installed over it. Users would have
+  to uninstall, losing their server profiles. Both the Gradle config and the
+  workflow therefore **fail** rather than fall back to the debug key.
+- Losing the keystore means never being able to update the app for anyone who
+  already installed it. Back it up somewhere that will still exist in five years.
+
+Create one once (`app/android/key.properties.example` has the command), then put
+it in repository secrets as `ANDROID_KEYSTORE_BASE64` (`base64 -w0` of the
+`.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+
+## Repository secrets
+
+The pipeline needs these set in repository settings. Without them the workflows
+are inert rather than broken — they run and refuse, which is the intended
+direction of failure.
+
+| Secret | Used by | Purpose |
+| --- | --- | --- |
+| `OPENROUTER_API_KEY` | `claude.yml` | model access |
+| `AUTOMATION_TOKEN` | `claude.yml`, `auto-fix-loop.yml` | a PAT, so PRs it opens actually start CI. It must belong to a login in `ALLOWED_AUTHORS`, or the retry comment it posts will be refused by the author gate |
+| `ANDROID_KEYSTORE_BASE64` | `release.yml` | release signing |
+| `ANDROID_KEYSTORE_PASSWORD` | `release.yml` | release signing |
+| `ANDROID_KEY_ALIAS` | `release.yml` | release signing |
+| `ANDROID_KEY_PASSWORD` | `release.yml` | release signing |
+
 ## Project memory
 
 Two files with distinct roles — do not merge them:

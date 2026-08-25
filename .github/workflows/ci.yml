@@ -72,6 +72,42 @@ jobs:
           cd protocol && dart test
           cd ../gateway && dart test
 
+  app:
+    name: app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Format
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze
+
+      - name: Tests
+        working-directory: app
+        run: flutter test
+
+      # A debug APK, not a release one: this job has no signing keystore and
+      # must not have one — CI on a pull request runs against branch contents,
+      # and the release key is the one secret that must never be reachable from
+      # there. It still catches what matters here: Gradle configuration errors,
+      # a plugin needing a higher compileSdk, and R8 rules gone stale.
+      - name: Android build
+        working-directory: app
+        run: flutter build apk --debug
+
   gateway-stack:
     name: gateway stack
     runs-on: ubuntu-latest

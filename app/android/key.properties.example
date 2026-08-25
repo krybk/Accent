@@ -1,0 +1,17 @@
+# Template only. The real key.properties is written by CI from repository
+# secrets, or created by hand for a local release build. It is never committed —
+# see .gitignore and scripts/check-secrets.sh.
+#
+# To create a keystore (once, and then keep it safe forever):
+#
+#   keytool -genkey -v -keystore accent-release.jks -storetype JKS \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias accent
+#
+# Back it up somewhere you will still have in five years. Android identifies an
+# app by this signature: lose the keystore and you cannot ship an update to
+# anyone who already installed the app — they would have to uninstall first.
+
+storeFile=accent-release.jks
+storePassword=replace-me
+keyAlias=accent
+keyPassword=replace-me

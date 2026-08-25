@@ -86,6 +86,60 @@ output path.
 
 **Fix.** `mkdir -p /out` in the same `RUN` layer.
 
+## Android release build fails at `checkReleaseAarMetadata`
+
+**Symptom.** `Dependency ':flutter_secure_storage' requires ... version 37 or
+later of the Android APIs. :app is currently compiled against android-36.`
+
+**Cause.** `flutter.compileSdkVersion` resolves lower than a plugin requires.
+
+**Fix.** Pin `compileSdk` explicitly in `app/android/app/build.gradle.kts`.
+`compileSdk` only decides which APIs are available at compile time — `minSdk`
+and `targetSdk` are untouched, so the set of devices that can install the app
+does not change.
+
+## `minifyReleaseWithR8` fails on missing Play Core classes
+
+**Symptom.** `Missing class com.google.android.play.core.splitinstall.*`,
+referenced from `io.flutter.embedding.engine.deferredcomponents`.
+
+**Cause.** Flutter's embedding references Play Core for Play-Store-delivered
+deferred components. We distribute APKs directly, so those classes are not on
+the classpath and R8 refuses references it cannot resolve.
+
+**Fix.** `-dontwarn com.google.android.play.core.**` in `proguard-rules.pro`.
+Correct rather than a workaround: those code paths are unreachable in a
+directly-installed build. If the app ever ships through the Play Store with
+deferred components, the rule must go and the dependency must come in.
+
+## `Gradle build daemon disappeared unexpectedly`
+
+**Symptom.** The build dies partway with no OOM message and no indication that
+memory was involved. Most likely on the universal APK, where R8 processes every
+architecture at once.
+
+**Cause.** The Flutter template ships `org.gradle.jvmargs=-Xmx8G
+-XX:MaxMetaspaceSize=4G` — 12 GB of reservation, on machines that often have 8 GB
+in total.
+
+**Fix.** Lower it. Measured on this project: killed at 8G, completes at 4G.
+
+**Do not revisit:** raising the heap to make a different failure go away. If a
+build dies without an OOM message, suspect the reservation exceeding physical
+memory before suspecting it being too small.
+
+## `flutter build` fails on `dot-shorthands` in generated code
+
+**Symptom.** `This requires the experimental 'dot-shorthands' language feature to
+be enabled`, pointing at `lib/main.dart` lines nobody wrote by hand.
+
+**Cause.** `flutter create` generates a template using a language feature newer
+than the SDK floor declared in `pubspec.yaml`.
+
+**Fix.** Either raise the SDK constraint or do not use the shorthand. We chose
+the latter: a lower floor means the app builds across a wider range of SDKs, and
+the generated counter demo was going to be replaced anyway.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.

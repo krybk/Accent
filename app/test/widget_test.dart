@@ -1,30 +1,24 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:accent/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:accent/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('shows the empty state when no servers are configured',
+      (tester) async {
+    await tester.pumpWidget(const AccentApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Servers'), findsOneWidget);
+    expect(find.text('No servers yet'), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
+  testWidgets('the add button says so rather than opening a half-built form',
+      (tester) async {
+    await tester.pumpWidget(const AccentApp());
+
     await tester.tap(find.byIcon(Icons.add));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Adding a server is not ready yet'), findsOneWidget);
   });
 }

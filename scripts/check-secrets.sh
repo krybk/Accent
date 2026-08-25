@@ -40,7 +40,7 @@ PATTERNS
 
 # Files that must never be in history under any name. This list mirrors the
 # secret half of .gitignore; the two must not drift apart.
-forbidden='(^|/)(\.env(\..*)?|id_ed25519|id_rsa|authorized_keys)$|\.(pem|jks|keystore)$'
+forbidden='(^|/)(\.env(\..*)?|id_ed25519|id_rsa|authorized_keys|key\.properties)$|\.(pem|jks|keystore)$'
 if tracked=$(git ls-files | grep -E "$forbidden" | grep -v '\.env\.example$'); then
   echo "Tracked files that must not be versioned:"
   echo "$tracked"

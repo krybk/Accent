@@ -1,0 +1,169 @@
+name: Release
+
+# Publishes signed Android binaries.
+#
+# Triggered by a version tag rather than by a push to main: a release is a
+# decision, and tagging is where that decision is recorded. workflow_dispatch is
+# kept so a failed publish can be retried without inventing a new version.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and publish'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to create the release and attach files. Nothing else.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # A release must not be able to publish a secret. The scanner runs before
+      # anything is built, so a leak stops the release rather than shipping in it.
+      - name: Secrets in the index
+        run: ./scripts/check-secrets.sh
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # The version in pubspec.yaml is the source of truth; the tag must agree
+      # with it. Disagreement means the tag was moved or pubspec was not bumped,
+      # and publishing a v0.2.0 tag containing 0.1.0 binaries is the kind of
+      # mistake nobody notices until a user reports the wrong version.
+      - name: Tag and pubspec version must agree
+        id: version
+        run: |
+          tag="${{ inputs.tag || github.ref_name }}"
+          pubspec=$(grep -m1 '^version:' app/pubspec.yaml | sed 's/version:[[:space:]]*//')
+          semver="${pubspec%%+*}"
+          if [ "$tag" != "v$semver" ]; then
+            echo "Tag $tag does not match app/pubspec.yaml version $semver." >&2
+            echo "Bump pubspec.yaml or retag." >&2
+            exit 1
+          fi
+          echo "version=$semver" >> "$GITHUB_OUTPUT"
+          echo "build=${pubspec##*+}" >> "$GITHUB_OUTPUT"
+          echo "Releasing $semver (build ${pubspec##*+})"
+
+      - name: Restore the signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 is not set." >&2
+            echo "A release cannot be signed with the debug key: Android refuses" >&2
+            echo "an upgrade whose signature changed, so users would have to" >&2
+            echo "uninstall and lose their server profiles." >&2
+            exit 1
+          fi
+          # Written outside the workspace would break the relative storeFile
+          # path Gradle resolves from android/. Kept in android/ and never
+          # committed — .gitignore covers *.jks and key.properties.
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > app/android/accent-release.jks
+          # Not `echo`: a password containing a backslash would be mangled.
+          {
+            printf 'storeFile=accent-release.jks\n'
+            printf 'storePassword=%s\n' "$STORE_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+          } > app/android/key.properties
+          echo "keystore restored"
+
+      - name: Resolve dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Tests before packaging. A release is the one build where a red test must
+      # stop everything, since the artefact outlives the run.
+      - name: Tests
+        working-directory: app
+        run: flutter test
+
+      # Split per ABI: a universal APK carries native code for every
+      # architecture, measured at 43 MB against 16 MB for arm64 alone — nearly
+      # threefold, for no benefit on any single device. The universal build is
+      # produced as well, for anyone who does not know their architecture.
+      - name: Build split APKs
+        working-directory: app
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build universal APK
+        working-directory: app
+        run: flutter build apk --release
+
+      # Named by version and architecture. Flutter's own names
+      # (app-arm64-v8a-release.apk) say nothing about which version they are,
+      # which is precisely what someone downloading an attachment needs to know.
+      - name: Name the artefacts
+        id: artefacts
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          out=app/build/app/outputs/flutter-apk
+          mkdir -p release
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            src="$out/app-$abi-release.apk"
+            [ -f "$src" ] || { echo "missing $src" >&2; exit 1; }
+            cp "$src" "release/accent-$VERSION-$abi.apk"
+          done
+          cp "$out/app-release.apk" "release/accent-$VERSION-universal.apk"
+          # Checksums, so a download can be verified independently of GitHub.
+          (cd release && sha256sum ./*.apk > SHA256SUMS.txt)
+          ls -lh release
+          cat release/SHA256SUMS.txt
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: Accent ${{ steps.version.outputs.version }}
+          # Generated notes from merged PRs, rather than a hand-written summary
+          # that drifts from what actually shipped.
+          generate_release_notes: true
+          body: |
+            Android binaries for Accent ${{ steps.version.outputs.version }}
+            (build ${{ steps.version.outputs.build }}).
+
+            Pick by device architecture — `arm64-v8a` covers essentially every
+            phone made in the last several years. If unsure, take `universal`.
+
+            Verify a download against `SHA256SUMS.txt`:
+
+            ```
+            sha256sum -c SHA256SUMS.txt --ignore-missing
+            ```
+
+            Installing requires allowing installation from outside the store,
+            since these APKs are distributed directly.
+          files: |
+            release/*.apk
+            release/SHA256SUMS.txt
+
+      # The keystore must not survive the job even on failure. Runners are
+      # ephemeral, but `if: always()` costs nothing and removes the assumption.
+      - name: Remove the signing material
+        if: always()
+        run: rm -f app/android/accent-release.jks app/android/key.properties
