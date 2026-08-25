@@ -236,3 +236,61 @@ with it, the encoding is wrong, and no server is needed to find out.
 the *chain* to be re-verified on 3.x. This was an API-level check against the
 pinned source plus host-only tests. Password auth, SFTP and reconnect-by-key have
 not been re-run against a live server on 3.3.1.
+
+## 2026-08-25. What the bootstrap sequence cannot assume about a server
+
+Writing the orchestrator turned up four things that are not visible in the
+compose file or the SSH interface, each of which would have surfaced as a
+mysterious failure on someone's server rather than as a compile error.
+
+**Postgres sets its password only when it initialises its volume.** So a second
+bootstrap that generates a fresh `POSTGRES_PASSWORD` writes a `.env` the existing
+database rejects, and the gateway and LiteLLM can no longer log in to their own
+storage. A repair run would break a working stack. The phone therefore keeps
+`LITELLM_MASTER_KEY` and `POSTGRES_PASSWORD` alongside the gateway token, even
+though it never presents either of them — it is the only party that can keep them
+stable across runs, since the decision not to read secrets back off the server
+also means not reading these.
+
+The same argument applies to the SSH key, one level up: generating a fresh key on
+every run leaves the previous public half in `authorized_keys` forever, granted to
+a private half the phone has already thrown away. The key is read back out of the
+store and reused, and it is persisted as soon as the key-only connection proves it
+works — not in the last stage. A crash between those two points would otherwise
+orphan a credential that still grants root and that nothing will ever rotate.
+
+**Neither `curl` nor `git` is guaranteed to be present.** Docker's convenience
+script needs `curl` to be downloaded at all, so `curl` exists on any server we
+installed Docker on — but not necessarily on one that already had it. And that
+script installs Docker, not `git`. Two consequences: the health poll runs the
+gateway container's own health-check binary (`docker compose exec -T gateway
+/app/bin/healthcheck`) rather than curling the published port, and the checkout
+stage begins with an idempotent one-liner that tries `apt-get`, then `dnf`, then
+`apk`. Docker itself is the one tool that can be assumed, because the stage before
+guarantees it.
+
+Using the container's own health check has a second benefit that was the deciding
+one: it hits the unauthenticated liveness path, so the gateway token never
+appears in a command line. A command line is world-readable in `ps` on the
+server, which rules out `curl -H "Authorization: Bearer …"` and rules out writing
+`.env` with `echo`. It goes up over SFTP instead.
+
+**`git ls-remote --exit-code` reserves exit 2 for "no matching refs".** Anything
+else — 128, typically — is a transport failure. Without that distinction, "is
+there a `v0.1.0` tag?" answers "no" on a server with no network, and the bootstrap
+silently deploys `origin/main` when it was asked for a release. The stage stops on
+a non-2 failure instead.
+
+**A `String` cannot be wiped in Dart.** Strings are immutable, so "wipe the
+password from memory" can only mean dropping the last reference to it — and a
+parameter cannot be dropped, because its frame lives as long as the bootstrap
+does. The password therefore travels in a `RootPassword` box that is emptied
+during stage 3, with seven stages and several minutes still to run, and asking for
+it afterwards throws. This is a smaller guarantee than "overwritten", and the
+difference is worth stating rather than papering over.
+
+One analyzer detail worth remembering, since the fix looks like noise: assigning
+an awaited generic call into a nullable local makes inference pick the nullable
+type parameter, so the value never promotes and every later use is an error. The
+sessions are held in nullable locals for cleanup and in non-nullable locals for
+work, which is why both exist.
