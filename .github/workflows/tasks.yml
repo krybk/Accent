@@ -90,9 +90,19 @@ jobs:
                 'It is reproduced below, and the file is the authority if the two',
                 'ever disagree.',
                 '',
-                'Finish by opening a pull request with `gh pr create --base main`',
-                `and \`Fixes #__ISSUE__\` in the body. A branch without a pull`,
-                'request is work nobody collects.',
+                '**Push a branch as soon as one file is coherent, and keep',
+                'pushing.** Not at the end. A session that runs out of turns with',
+                'nothing pushed loses everything it did, and that has happened',
+                'here — a full session of work, gone, with the Issue none the',
+                'wiser. Partial work on a branch is recoverable; work in a dead',
+                'runner is not.',
+                '',
+                'Then open a pull request with `gh pr create --base main` and',
+                `\`Fixes #__ISSUE__\` in the body. A branch without a pull request`,
+                'is work nobody collects.',
+                '',
+                'If you cannot finish, say so in a comment naming what is left,',
+                'and leave the pull request open rather than deleting anything.',
                 '',
                 '---',
                 '',
@@ -111,4 +121,26 @@ jobs:
               });
 
               core.info(`${rel}: filed #${issue.number}.`);
+            }
+
+            // A task whose file is gone has been withdrawn. Deleting the spec is
+            // the explicit act that says so — a completed task keeps its file, as
+            // the record of what was asked. Without this, a task split into
+            // smaller ones would leave its oversized original open forever, and
+            // an open task Issue is not inert: it is something a session may
+            // still pick up.
+            const stale = existing.filter((i) => i.state === 'open');
+            for (const issue of stale) {
+              const marker = (issue.body || '').match(/<!-- task: (.+?) -->/);
+              if (!marker) continue;
+              if (fs.existsSync(marker[1])) continue;
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: `\`${marker[1]}\` has been deleted — withdrawing this task.`,
+              });
+              await github.rest.issues.update({
+                owner, repo, issue_number: issue.number,
+                state: 'closed', state_reason: 'not_planned',
+              });
+              core.info(`#${issue.number}: withdrawn, spec file gone.`);
             }

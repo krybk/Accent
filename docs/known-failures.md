@@ -251,6 +251,25 @@ suppressed that signature permanently.
 `@claude` instead of returning, capped by counting marker comments the same way
 the pull request path does. After the cap it gets `needs-human`.
 
+## A task session ends with `Reached maximum number of turns` and no branch
+
+**Symptom.** The Issue gets no pull request and no branch exists. Unlike the
+turn-limit failure that at least left `auto/...` behind, nothing is recoverable.
+
+**Cause.** Two compounding. The task was too large for one session — five new
+files, tests for four failure modes, a screen rewired and prose updated — and the
+session committed nothing until the end, so the ceiling took all of it.
+
+**Fix.** Split the task; one new module and its tests, or one screen, not a
+layer. And instruct the session to push as soon as one file is coherent: partial
+work on a branch is recoverable, work in a dead runner is not. Both are in
+`.github/tasks/README.md` now.
+
+**Do not revisit:** raising `--max-turns` as the answer to an oversized task.
+Cost is turns, so a ceiling high enough for any task is a ceiling that no longer
+bounds anything. It was already raised once, from 25 to 60, for a real reason —
+a session dying one turn short of opening its pull request. This is not that.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.
