@@ -125,6 +125,9 @@ class GeneratedSshKey {
 
 /// Key generation and the `authorized_keys` encoding.
 abstract final class SshKeys {
+  /// The length of an ed25519 public key, fixed by the algorithm.
+  static const int ed25519PublicKeyLength = 32;
+
   /// Generates an ed25519 key pair.
   ///
   /// `dartssh2` reads keys but cannot generate them, so the key is built with
@@ -177,7 +180,17 @@ abstract final class SshKeys {
   /// an authentication failure rather than an encoding mistake — which is why
   /// the encoding is written out here and pinned by a test on known bytes,
   /// rather than assembled at the call site.
+  ///
+  /// Throws [ArgumentError] on a public key that is not 32 bytes. Any other
+  /// length still encodes to a syntactically valid line, and the failure would
+  /// surface much later as a server that refuses the key.
   static String authorizedKeysLine(Uint8List publicKey, String comment) {
+    if (publicKey.length != ed25519PublicKeyLength) {
+      throw ArgumentError(
+        'An ed25519 public key is $ed25519PublicKeyLength bytes, '
+        'got ${publicKey.length}',
+      );
+    }
     final builder = BytesBuilder();
     void writeString(List<int> bytes) {
       builder.add([
