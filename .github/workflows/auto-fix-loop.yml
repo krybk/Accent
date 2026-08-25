@@ -84,14 +84,47 @@ jobs:
               github.rest.actions.listJobsForWorkflowRun,
               { owner, repo, run_id: run.id, per_page: 100 },
             );
-            const failed = jobs
-              .filter((j) => j.conclusion === 'failure')
-              .map((j) => ({
-                job: j.name,
-                steps: j.steps
+            // The error text comes from check-run annotations rather than from
+            // the log. Two reasons, and the second is the one that matters.
+            //
+            // The logs endpoint requires admin rights; annotations do not, so
+            // this works for anyone reading the repository. And putting the
+            // actual failing line into the Issue means neither a human nor a
+            // session has to go and fetch it — a fetch inside a long session
+            // resends the whole conversation, which is where the money goes. The
+            // cheapest way to read a log is not a cheaper model. It is a report
+            // that already contains what a reader needs.
+            async function errorLines(jobId) {
+              try {
+                const annotations = await github.paginate(
+                  github.rest.checks.listAnnotations,
+                  { owner, repo, check_run_id: jobId, per_page: 50 },
+                );
+                return [...new Set(
+                  annotations
+                    .filter((a) => a.annotation_level === 'failure')
+                    .map((a) => (a.message || '').trim())
+                    .filter(Boolean)
+                    // "Process completed with exit code 1" is on every failure
+                    // and says nothing; it would crowd out the line that does.
+                    .filter((m) => !/^Process completed with exit code \d+\.?$/.test(m)),
+                )].slice(0, 5);
+              } catch (error) {
+                core.warning(`annotations for job ${jobId}: ${error.message}`);
+                return [];
+              }
+            }
+
+            const failed = [];
+            for (const job of jobs.filter((j) => j.conclusion === 'failure')) {
+              failed.push({
+                job: job.name,
+                steps: job.steps
                   .filter((s) => s.conclusion === 'failure')
                   .map((s) => s.name),
-              }));
+                errors: await errorLines(job.id),
+              });
+            }
 
             if (failed.length === 0) {
               core.info('The run is red but no job is — nothing actionable.');
@@ -162,7 +195,12 @@ jobs:
               `[Run log](${runUrl}).`,
               '',
               '**Failed:**',
-              ...failed.map((f) => `- \`${f.job}\` at ${f.steps.map((s) => `*${s}*`).join(', ') || 'an unnamed step'}`),
+              ...failed.flatMap((f) => [
+                `- \`${f.job}\` at ${f.steps.map((s) => `*${s}*`).join(', ') || 'an unnamed step'}`,
+                ...(f.errors.length
+                  ? ['', '  ```', ...f.errors.map((line) => `  ${line}`), '  ```']
+                  : []),
+              ]),
               '',
               'Read `docs/known-failures.md` before investigating — the cause may',
               'already be diagnosed there.',
