@@ -1,0 +1,217 @@
+name: Auto-Fix Loop Monitor
+
+# Reacts to the *result* of CI rather than to `pull_request: synchronize`.
+# Reacting to synchronize means calling the checks API before the checks have
+# started, which almost never sees a real failure.
+#
+# On green it squash-merges the PR, but only when every gate holds: the PR comes
+# from this repository, carries the `auto-fixed` label, is not a draft, and does
+# not touch the checks themselves. That last one matters most — see the guarded
+# paths in the green branch.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request:
+    types: [closed]
+
+jobs:
+  close-issue-on-merge:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close the Issue linked from the PR body
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const match = body.match(/#(\d+)/);
+            if (!match) {
+              core.info('No Issue reference in the PR body — nothing to close.');
+              return;
+            }
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(match[1]),
+              state: 'closed',
+              state_reason: 'completed',
+            });
+            core.info(`Closed Issue #${match[1]}`);
+
+  handle-ci-result:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Merge on green, or ask Claude to retry on red
+        uses: actions/github-script@v8
+        with:
+          # PAT so the retry comment actually wakes claude.yml. GITHUB_TOKEN
+          # cannot: events it raises do not trigger other workflows.
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
+          script: |
+            // Guard against an endless fix→fail→fix cycle. With a PAT the bot
+            // acts as a normal user, so `github.actor` cannot distinguish it —
+            // the stop condition has to be an explicit attempt count.
+            //
+            // This marker does double duty: claude.yml also reads it to keep the
+            // loop on Sonnet, since this comment has to say "@claude" to wake it
+            // at all. Keep the two strings in sync.
+            const MARKER = '<!-- automated-request -->';
+            // One retry, not three. Every attempt is a full session, and
+            // repeated blind attempts at the same root cause do not converge —
+            // they just cost three times as much.
+            const MAX_ATTEMPTS = 1;
+
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+
+            let prs = run.pull_requests || [];
+            if (prs.length === 0) {
+              const { data } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: run.head_sha,
+              });
+              prs = data.filter((pr) => pr.state === 'open');
+            }
+            if (prs.length === 0) {
+              core.info('This CI run is not attached to any open PR.');
+              return;
+            }
+
+            for (const ref of prs) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: ref.number,
+              });
+
+              // This repository is PUBLIC, so CI also runs on fork PRs. A
+              // failing fork PR would otherwise make us post "@claude fix
+              // this", waking a session with write access to work on code a
+              // stranger controls. Fork PRs are a human's job.
+              if (pr.head.repo.full_name !== `${owner}/${repo}`) {
+                core.info(`PR #${pr.number}: from a fork — leaving it to a human.`);
+                continue;
+              }
+
+              const labels = pr.labels.map((l) => l.name);
+
+              if (run.conclusion === 'success') {
+                if (!labels.includes('auto-fixed')) {
+                  core.info(`PR #${pr.number}: not labelled auto-fixed — not merging.`);
+                  continue;
+                }
+                if (pr.draft) {
+                  core.info(`PR #${pr.number}: a draft — not merging.`);
+                  continue;
+                }
+
+                // The failure mode an auto-fix loop trends towards is making the
+                // check pass by weakening the check. A PR that edits the gates
+                // themselves therefore never merges unread, however green it is:
+                // green would then be measuring whatever the PR just rewrote.
+                const guarded = [
+                  /^\.github\/workflows\//,
+                  /^scripts\/check-secrets\.sh$/,
+                  /^\.gitignore$/,
+                ];
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner, repo, pull_number: pr.number, per_page: 100,
+                });
+                const touched = files
+                  .map((f) => f.filename)
+                  .filter((name) => guarded.some((rule) => rule.test(name)));
+
+                if (touched.length > 0) {
+                  await github.rest.issues.addLabels({
+                    owner, repo, issue_number: pr.number,
+                    labels: ['needs-human'],
+                  });
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: pr.number,
+                    body: [
+                      'CI is green, but this PR changes the checks themselves, so',
+                      'it will not be merged automatically:',
+                      '',
+                      ...touched.map((name) => `- \`${name}\``),
+                      '',
+                      'A green run cannot vouch for a change to what green means.',
+                    ].join('\n'),
+                  });
+                  core.warning(
+                    `PR #${pr.number}: touches guarded paths (${touched.join(', ')}) — human review required.`,
+                  );
+                  continue;
+                }
+
+                // Merged directly instead of through GitHub's auto-merge queue,
+                // so this works without the "Allow auto-merge" repo setting.
+                // The safety condition is `sha`: GitHub rejects the merge if the
+                // branch moved after that run, so a later untested commit
+                // cannot ride in on an older green result.
+                try {
+                  const { data: merge } = await github.rest.pulls.merge({
+                    owner, repo,
+                    pull_number: pr.number,
+                    merge_method: 'squash',
+                    sha: run.head_sha,
+                  });
+                  core.info(`PR #${pr.number}: merged (${merge.sha.slice(0, 7)}).`);
+                } catch (err) {
+                  // 405 = branch protection or conflicts block it,
+                  // 409 = head moved since the green run. Neither is a reason
+                  // to fail the workflow; a human or the next run picks it up.
+                  core.warning(
+                    `PR #${pr.number}: merge not performed (${err.status}): ${err.message}`,
+                  );
+                }
+                continue;
+              }
+
+              if (run.conclusion !== 'failure') {
+                core.info(`PR #${pr.number}: CI ended as ${run.conclusion} — skipping.`);
+                continue;
+              }
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: pr.number, per_page: 100,
+              });
+              const attempts = comments.filter((c) => (c.body || '').includes(MARKER)).length;
+
+              if (attempts >= MAX_ATTEMPTS) {
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: pr.number, labels: ['needs-human'],
+                });
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: pr.number,
+                  body: `Auto-fixing stopped after ${attempts} attempt(s). A human is needed.`,
+                });
+                core.warning(`PR #${pr.number}: attempt limit reached (${attempts}).`);
+                continue;
+              }
+
+              const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${run.id}`;
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number,
+                body: [
+                  MARKER,
+                  `@claude CI failed (attempt ${attempts + 1} of ${MAX_ATTEMPTS}). [Run log](${runUrl}).`,
+                  '',
+                  'Read `.claude/known-failures.md` first — this failure may already be diagnosed there.',
+                  '',
+                  'Fix the cause and update this branch. Before pushing, run locally:',
+                  '`dart format --output=none --set-exit-if-changed protocol gateway`,',
+                  'then in each of `protocol/` and `gateway/`: `dart analyze --fatal-infos` and `dart test`.',
+                  '',
+                  'If you touched prompts or model routing, also run',
+                  '`node scripts/cache-canary.js` — prompt caching breaks silently.',
+                  '',
+                  'If the cause is new, add it to `.claude/known-failures.md` in the same PR.',
+                ].join('\n'),
+              });
+              core.info(`PR #${pr.number}: fix requested, attempt ${attempts + 1}.`);
+            }

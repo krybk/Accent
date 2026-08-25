@@ -8,9 +8,6 @@ then on you talk to that server from a chat: text, images, files, video, voice
 messages. You can add several servers and ask them to be linked to each other
 with keys or tunnels.
 
-In spirit it is AmneziaVPN, except what gets deployed is AI infrastructure rather
-than a tunnel.
-
 ## How access works
 
 The root password is entered **once** and is never stored on the device. When you

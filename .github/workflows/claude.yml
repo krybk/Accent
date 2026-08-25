@@ -1,0 +1,222 @@
+name: Claude Code Action (via OpenRouter)
+
+# `labeled` is deliberately absent: it fires on every label our own workflows
+# attach, which would re-trigger Claude on issues it has already handled.
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  # Inline comments on a diff are a separate event from issue comments.
+  pull_request_review_comment:
+    types: [created]
+  # Kept only so a human can open a PR whose body asks for help; the @claude
+  # gate below applies to it as well.
+  pull_request:
+    types: [opened]
+
+# One Claude session per thread at a time. Two sessions on the same PR would
+# push to the same branch and fight; queueing is cheaper than untangling that.
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  # Pure API calls, no model involved — this is what keeps the auto-merge chain
+  # working now that Claude no longer reviews its own pull requests.
+  label:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Label Claude's own pull request for auto-merge
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            // A fork PR is attacker-controlled. Labelling it auto-fixed would
+            // hand it to the merge path in auto-fix-loop.yml.
+            if (pr.head.repo.full_name !== `${owner}/${repo}`) {
+              core.info(`PR #${pr.number}: from a fork — not labelling.`);
+              return;
+            }
+
+            // PRs are opened with AUTOMATION_TOKEN, so the author is the token
+            // owner — indistinguishable from a human PR. The co-author trailer
+            // Claude Code puts on its commits is the usable signal.
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner, repo, pull_number: pr.number, per_page: 100,
+            });
+            const byClaude = commits.some(
+              (c) => /co-authored-by:\s*claude/i.test(c.commit.message || ''),
+            );
+
+            if (!byClaude) {
+              core.info(`PR #${pr.number}: not Claude's work — not labelling.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner, repo, issue_number: pr.number,
+              labels: ['auto-fixed', 'ready-to-review'],
+            });
+            core.info(`PR #${pr.number}: labelled auto-fixed, ready to merge.`);
+
+  claude:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Decide whether Claude should run, and on which model
+        id: check
+        # Issue and comment bodies are attacker-controlled text. They are passed
+        # in through env and quoted, never interpolated into the script with
+        # ${{ }} — that would let a comment body execute shell commands here.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          # Login of whoever wrote the thing that woke us. GitHub computes this;
+          # it cannot be forged from the body text.
+          AUTHOR: >-
+            ${{ github.event.comment.user.login
+              || github.event.issue.user.login
+              || github.event.pull_request.user.login }}
+          # This repository is PUBLIC. Any GitHub user can open an issue saying
+          # "@claude ...", and this job runs in the base-repo context with write
+          # permissions, a PAT, and a provider key. Without this list a stranger
+          # could have Claude commit on our behalf, or simply burn the model
+          # budget by filing issues. The private repository this workflow came
+          # from did not need the check; here it is load-bearing.
+          #
+          # Named logins rather than author_association: OWNER/MEMBER/
+          # COLLABORATOR widens automatically as people are added to the
+          # repository or org, which is the opposite of what a spend-and-write
+          # gate should do. Adding someone here is a deliberate commit.
+          #
+          # Note the dependency this creates: the retry comment from
+          # auto-fix-loop.yml is posted with AUTOMATION_TOKEN, so that PAT must
+          # belong to a login on this list — otherwise the loop posts a comment
+          # that this gate then refuses, and CI failures stop being picked up.
+          ALLOWED_AUTHORS: "krybk"
+          # Exact model IDs, never OpenRouter's ~family-latest aliases: an alias
+          # will one day resolve to a pricier model with nothing in the logs
+          # changing. A version change belongs in a commit.
+          OPUS_MODEL: "anthropic/claude-opus-5"
+          SONNET_MODEL: "anthropic/claude-sonnet-5"
+          # Marker that our own workflows put in everything they write. The
+          # retry comment in auto-fix-loop.yml has to say "@claude" to wake this
+          # workflow at all, so without this marker the loop would escalate
+          # itself to Opus on every red run.
+          LOOP_MARKER: "<!-- automated-request -->"
+        run: |
+          case "$EVENT_NAME" in
+            issues)
+              body="$ISSUE_BODY"
+              ;;
+            issue_comment|pull_request_review_comment)
+              body="$COMMENT_BODY"
+              ;;
+            pull_request)
+              body="$PR_BODY"
+              ;;
+            *)
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # The author check comes before the @claude check on purpose: a
+          # stranger's issue must cost nothing at all, not even a token.
+          if [[ " $ALLOWED_ASSOCIATIONS " != *" $ASSOCIATION "* ]]; then
+            echo "Author association is '$ASSOCIATION' — not running."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$body" != *"@claude"* ]]; then
+            echo "No @claude mention — not running."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Loop work — the CI retry comment — stays on Sonnet. Only a human
+          # writing @claude gets Opus.
+          #
+          # Haiku is configured in the gateway but deliberately not wired in
+          # here yet. A Haiku attempt costs 0.45 of a Sonnet attempt, so a
+          # cheap-first ladder only pays off above a ~45% solo success rate, and
+          # that rate is currently unknown. Per-attempt cost logging comes
+          # first; see .claude/journal.md.
+          if [[ "$body" == *"$LOOP_MARKER"* ]]; then
+            model="$SONNET_MODEL"
+            echo "Automated loop request — Sonnet."
+          else
+            model="$OPUS_MODEL"
+            echo "Human request — Opus."
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          echo "model=$model" >> "$GITHUB_OUTPUT"
+
+      # The action needs a checkout to run the project's tools.
+      - name: Checkout
+        if: steps.check.outputs.should_run == 'true'
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AUTOMATION_TOKEN }}
+
+      # Installed here rather than left to Claude: the toolchain is not
+      # something the session should spend turns on, and every turn is history
+      # resent at full price.
+      - name: Set up Flutter
+        if: steps.check.outputs.should_run == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Run Claude Code Action via OpenRouter
+        id: claude
+        if: steps.check.outputs.should_run == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          # A PAT rather than GITHUB_TOKEN, so the PRs Claude opens actually
+          # start CI instead of waiting for "Approve workflows to run".
+          github_token: ${{ secrets.AUTOMATION_TOKEN }}
+          # Required: the action validates its environment before starting and
+          # does not accept ANTHROPIC_AUTH_TOKEN alone. Passing the OpenRouter
+          # key both here and as ANTHROPIC_AUTH_TOKEN below is the setup
+          # OpenRouter documents; the same key in either header authenticates.
+          anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+          claude_args: |
+            --model "${{ steps.check.outputs.model }}"
+            --max-turns 25
+            --allowedTools "Bash(git:*), Bash(gh:*), Bash(dart:*), Bash(flutter:*), Bash(docker:*), Bash(ls:*), Bash(cat:*), Bash(grep:*), Bash(find:*), Bash(mkdir:*), Bash(cp:*), Bash(mv:*), Bash(jq:*), Bash(node:*), Bash(python3:*), Edit, Read, Write, Glob, Grep"
+        env:
+          # OpenRouter serves an Anthropic Messages-compatible endpoint at
+          # /api/v1/messages, so this base URL is correct as written.
+          ANTHROPIC_BASE_URL: "https://openrouter.ai/api"
+          # OpenRouter authenticates with `Authorization: Bearer`, which is what
+          # ANTHROPIC_AUTH_TOKEN produces.
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.OPENROUTER_API_KEY }}
+          # Tiers the CLI picks on its own (subagents, background summaries).
+          # claude-haiku-5 does not exist: it was set here once and failed every
+          # cheap-tier call with 400, silently pushing that work onto pricier
+          # tiers. Exact IDs only.
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "anthropic/claude-opus-5"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "anthropic/claude-sonnet-5"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "anthropic/claude-haiku-4.5"
