@@ -201,7 +201,7 @@ jobs:
                   MARKER,
                   `@claude CI failed (attempt ${attempts + 1} of ${MAX_ATTEMPTS}). [Run log](${runUrl}).`,
                   '',
-                  'Read `.claude/known-failures.md` first — this failure may already be diagnosed there.',
+                  'Read `docs/known-failures.md` first — this failure may already be diagnosed there.',
                   '',
                   'Fix the cause and update this branch. Before pushing, run locally:',
                   '`dart format --output=none --set-exit-if-changed protocol gateway`,',
@@ -210,7 +210,7 @@ jobs:
                   'If you touched prompts or model routing, also run',
                   '`node scripts/cache-canary.js` — prompt caching breaks silently.',
                   '',
-                  'If the cause is new, add it to `.claude/known-failures.md` in the same PR.',
+                  'If the cause is new, add it to `docs/known-failures.md` in the same PR.',
                 ].join('\n'),
               });
               core.info(`PR #${pr.number}: fix requested, attempt ${attempts + 1}.`);

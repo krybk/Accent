@@ -126,7 +126,7 @@ currently unknown and the ladder would otherwise be a guess.
 
 I originally recommended Tauri v2 + React, leaning on "one stack for the whole
 pipeline". That argument turned out to be weaker than it sounded: nothing in
-`.github/`, `scripts/` or `.claude/` depends on the app's language, and
+`.github/`, `scripts/` or `docs/` depends on the app's language, and
 `CLAUDE.md` already declares `app/` and `gateway/` as rewritten per app. The
 template's value is in the scaffolding, so changing the client language costs it
 nothing.

@@ -38,7 +38,7 @@ Sonnet and Opus, ~4096 on Haiku 4.5. Below it the cache is silently not created.
 
 **Fix.** Either extend the stable part of the prefix past the threshold, or accept
 that a short task will not cache — and in that case treat Haiku as expensive
-rather than cheap (details in `.claude/journal.md`).
+rather than cheap (details in `docs/engineering-journal.md`).
 
 **Do not revisit:** the hypothesis that Haiku's threshold is 2048. Checked; at
 2452 tokens the cache is still not created.

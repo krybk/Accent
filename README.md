@@ -34,7 +34,7 @@ Haiku, Sonnet and Opus are reachable through the gateway, as are third-party
 models — directly or via OpenRouter, switchable from the UI. Spend is accounted
 per call, which turned out to matter more than the choice of tier: the money goes
 into resending history, not into the length of answers. Measurements and
-conclusions are in [`.claude/journal.md`](.claude/journal.md).
+conclusions are in [`docs/engineering-journal.md`](docs/engineering-journal.md).
 
 To verify that prompt caching actually works:
 
@@ -45,6 +45,6 @@ OPENROUTER_API_KEY=... node scripts/cache-canary.js anthropic/claude-sonnet-5
 ## Pipeline template
 
 The repository also serves as the template for subsequent apps: the scaffolding
-(`.github/`, `scripts/`, `.claude/`) carries over wholesale, while the
-application half (`app/`, `gateway/`) is rewritten. The split is documented in
-[`CLAUDE.md`](CLAUDE.md).
+(`.github/`, `scripts/`, `docs/`) carries over wholesale, while the application
+half (`app/`, `gateway/`, `protocol/`) is rewritten. The split is documented in
+[`docs/contributing.md`](docs/contributing.md).

@@ -17,7 +17,7 @@
 model_list:
   # Mechanical work behind a long stable prefix. Cheap only above ~4096 tokens
   # of prefix: below that Haiku does not cache at all, and its input then costs
-  # more than Sonnet's cached input. See .claude/journal.md.
+  # more than Sonnet's cached input. See docs/engineering-journal.md.
   - model_name: haiku
     litellm_params:
       model: openrouter/anthropic/claude-haiku-4.5

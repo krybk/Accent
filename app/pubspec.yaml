@@ -1,0 +1,39 @@
+name: accent
+description: Remote for server-side AI infrastructure
+publish_to: none
+
+# Version is the source of truth for the APK filename and the release tag.
+# build+number is what Android uses to decide "newer", so it must increase on
+# every published build even when the semantic version does not.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Same wire types as the gateway, by path. A protocol change breaks the build
+  # on both sides instead of failing on a device.
+  accent_protocol:
+    path: ../protocol
+
+  # SSH for the one-time bootstrap: password auth, remote exec, SFTP upload.
+  # Verified against this version — see .claude/journal.md.
+  dartssh2: ^3.3.1
+  # Key generation, which dartssh2 does not provide. Same ed25519 implementation
+  # dartssh2 signs with, so no second crypto library enters the tree.
+  pinenacl: ^0.6.0
+
+  # Private keys and gateway tokens go here, not into shared preferences: this
+  # wraps the Android Keystore, so the material is not readable by backup or by
+  # an adb pull off a rooted device.
+  flutter_secure_storage: ^11.0.0
+
+  http: ^1.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

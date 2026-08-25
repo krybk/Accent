@@ -47,17 +47,21 @@ jobs:
             }
 
             // PRs are opened with AUTOMATION_TOKEN, so the author is the token
-            // owner — indistinguishable from a human PR. The co-author trailer
-            // Claude Code puts on its commits is the usable signal.
-            const commits = await github.paginate(github.rest.pulls.listCommits, {
-              owner, repo, pull_number: pr.number, per_page: 100,
-            });
-            const byClaude = commits.some(
-              (c) => /co-authored-by:\s*claude/i.test(c.commit.message || ''),
-            );
+            // owner — indistinguishable from a hand-written PR. The branch
+            // prefix is the signal instead: `branch_prefix` below pins it, and
+            // only the pipeline creates branches under it.
+            //
+            // This used to key off a co-author trailer in the commit messages.
+            // That trailer is no longer written, and a detector reading a field
+            // that no longer exists fails silently — it would simply stop
+            // labelling, and auto-merge would quietly never fire again.
+            const AUTOMATED_PREFIX = 'auto/';
 
-            if (!byClaude) {
-              core.info(`PR #${pr.number}: not Claude's work — not labelling.`);
+            if (!pr.head.ref.startsWith(AUTOMATED_PREFIX)) {
+              core.info(
+                `PR #${pr.number}: branch "${pr.head.ref}" is not under ` +
+                `"${AUTOMATED_PREFIX}" — not labelling.`,
+              );
               return;
             }
 
@@ -136,10 +140,21 @@ jobs:
               ;;
           esac
 
+          # An empty author must never pass. Written as an explicit check
+          # because the alternative fails open: with both variables empty,
+          # `" " != *" "*` is false, and the gate would admit everyone. That is
+          # exactly the bug this shape prevents.
+          if [[ -z "$AUTHOR" ]]; then
+            echo "Author is empty — not running."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           # The author check comes before the @claude check on purpose: a
           # stranger's issue must cost nothing at all, not even a token.
-          if [[ " $ALLOWED_ASSOCIATIONS " != *" $ASSOCIATION "* ]]; then
-            echo "Author association is '$ASSOCIATION' — not running."
+          if [[ " $ALLOWED_AUTHORS " != *" $AUTHOR "* ]]; then
+            echo "Author '$AUTHOR' is not on the allowed list — not running."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
             echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
             exit 0
@@ -159,7 +174,7 @@ jobs:
           # here yet. A Haiku attempt costs 0.45 of a Sonnet attempt, so a
           # cheap-first ladder only pays off above a ~45% solo success rate, and
           # that rate is currently unknown. Per-attempt cost logging comes
-          # first; see .claude/journal.md.
+          # first; see docs/engineering-journal.md.
           if [[ "$body" == *"$LOOP_MARKER"* ]]; then
             model="$SONNET_MODEL"
             echo "Automated loop request — Sonnet."
@@ -202,6 +217,10 @@ jobs:
           # key both here and as ANTHROPIC_AUTH_TOKEN below is the setup
           # OpenRouter documents; the same key in either header authenticates.
           anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+          # Must stay in sync with AUTOMATED_PREFIX in the label job above: that
+          # job labels by this prefix, and auto-merge in auto-fix-loop.yml only
+          # merges what carries the label. A mismatch stops auto-merge silently.
+          branch_prefix: "auto/"
           claude_args: |
             --model "${{ steps.check.outputs.model }}"
             --max-turns 25
