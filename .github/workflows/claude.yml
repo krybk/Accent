@@ -167,24 +167,33 @@ jobs:
             exit 0
           fi
 
-          # Loop work — the CI retry comment — stays on Sonnet. Only a human
-          # writing @claude gets Opus.
+          # Loop work — the CI retry comment — stays on Sonnet unconditionally.
           #
-          # Haiku is configured in the gateway but deliberately not wired in
-          # here yet. A Haiku attempt costs 0.45 of a Sonnet attempt, so a
-          # cheap-first ladder only pays off above a ~45% solo success rate, and
-          # that rate is currently unknown. Per-attempt cost logging comes
-          # first; see docs/engineering-journal.md.
+          # Everything else used to go to Opus purely because a human had
+          # written it, which is an expensive thing to infer from authorship: a
+          # human asking to rename a field paid Opus rates for it. The default is
+          # now Sonnet, with two ways up.
           if [[ "$body" == *"$LOOP_MARKER"* ]]; then
-            model="$SONNET_MODEL"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
             echo "Automated loop request — Sonnet."
-          else
-            model="$OPUS_MODEL"
-            echo "Human request — Opus."
+            exit 0
+          fi
+
+          # The first way up is explicit, and it is the one to trust: write
+          # [opus] in the body. A human who knows the task is hard should not
+          # have to argue with a classifier about it.
+          if [[ "$body" == *"[opus]"* ]]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "model=$OPUS_MODEL" >> "$GITHUB_OUTPUT"
+            echo "Explicitly requested — Opus."
+            exit 0
           fi
 
           echo "should_run=true" >> "$GITHUB_OUTPUT"
-          echo "model=$model" >> "$GITHUB_OUTPUT"
+          echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+          echo "triage=true" >> "$GITHUB_OUTPUT"
+          echo "Defaulting to Sonnet; the triage step may raise it."
 
       # Both secrets checked here, after the author gate so a stranger's issue
       # still costs nothing, and before the action so the failure names itself.
@@ -214,6 +223,64 @@ jobs:
           fi
 
       # The action needs a checkout to run the project's tools.
+      # One Haiku call, a few hundred tokens, to decide whether this needs Opus.
+      #
+      # The point is the asymmetry: reading a request is cheap and answering it
+      # is not, so the decision belongs on the cheapest model that can make it.
+      # What it must not do is fail upward — a classifier that errs towards Opus
+      # costs more than no classifier at all, so anything unexpected here leaves
+      # Sonnet in place. The explicit `[opus]` marker exists for when a human
+      # disagrees with the outcome.
+      - name: Ask Haiku whether this needs Opus
+        id: triage
+        if: steps.check.outputs.triage == 'true'
+        # A triage failure must never stop the session. If this step dies, the
+        # expression consuming its output falls back to the Sonnet default that
+        # the previous step already wrote.
+        continue-on-error: true
+        env:
+          BODY: ${{ github.event.issue.body || github.event.comment.body || github.event.pull_request.body }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          rubric='Answer with exactly one word, OPUS or SONNET, and nothing else.
+          Answer OPUS only if the request requires designing an architecture,
+          choosing between approaches with long-lived consequences, or reasoning
+          about a system the request does not fully describe.
+          Answer SONNET for implementing a stated design, fixing a failure,
+          editing configuration or workflows, renaming, refactoring, adding
+          tests, or writing documentation.
+          When unsure, answer SONNET.'
+
+          # The body is passed as data through jq, never interpolated into the
+          # JSON by hand: a quote or a newline in an Issue would otherwise
+          # produce an invalid request, and this step failing must not stop the
+          # session.
+          payload=$(jq -n --arg rubric "$rubric" --arg body "$BODY" '{
+            model: "anthropic/claude-haiku-4.5",
+            max_tokens: 4,
+            system: $rubric,
+            messages: [{role: "user", content: $body}]
+          }')
+
+          verdict=$(curl -s --max-time 30 "https://openrouter.ai/api/v1/messages" \
+            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d "$payload" | jq -r '.content[0].text // ""' \
+            | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]' || true)
+
+          # Substring rather than equality: a trailing full stop would otherwise
+          # send every hard task to Sonnet and the classifier would look like it
+          # was working. Anything that is not recognisably OPUS stays cheap.
+          echo "Haiku says: ${verdict:-<nothing>}"
+          if [ "${verdict#*OPUS}" != "$verdict" ]; then
+            echo "model=anthropic/claude-opus-5" >> "$GITHUB_OUTPUT"
+            echo "Raised to Opus."
+          else
+            echo "model=anthropic/claude-sonnet-5" >> "$GITHUB_OUTPUT"
+            echo "Staying on Sonnet."
+          fi
+
       - name: Checkout
         if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v5
@@ -262,7 +329,7 @@ jobs:
           # that cannot reach the end multiplies it rather than capping it: the
           # retry starts over from nothing.
           claude_args: |
-            --model "${{ steps.check.outputs.model }}"
+            --model "${{ steps.triage.outputs.model || steps.check.outputs.model }}"
             --max-turns 60
             --allowedTools "Bash(git:*), Bash(gh:*), Bash(dart:*), Bash(flutter:*), Bash(docker:*), Bash(ls:*), Bash(cat:*), Bash(grep:*), Bash(find:*), Bash(mkdir:*), Bash(cp:*), Bash(mv:*), Bash(jq:*), Bash(node:*), Bash(python3:*), Edit, Read, Write, Glob, Grep"
         env:

@@ -42,3 +42,19 @@ its Issue exists changes nothing — file a new task instead.
 
 Deleting a task file withdraws it: the intake closes the Issue as not planned. A
 completed task keeps its file, as the record of what was asked.
+
+## Commissioned from the control plane
+
+A task that came from an Issue in `krybk/aimanager` should carry a line naming
+it:
+
+```
+<!-- parent: krybk/aimanager#12 -->
+```
+
+The intake copies the file into the Issue body, so the marker travels with it,
+and the merge that closes the Issue then comments on that upstream Issue with the
+pull request and what it changed. Without the marker the chain is one-way: the
+parent asks for something and never hears whether it happened, so whoever is
+watching has to go and look — which is the thing the control plane exists to
+avoid.

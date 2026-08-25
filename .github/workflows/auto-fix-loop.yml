@@ -22,24 +22,70 @@ jobs:
     permissions:
       issues: write
     steps:
-      - name: Close the Issue linked from the PR body
+      - name: Close the Issue, and report upstream if it was commissioned
         uses: actions/github-script@v8
         with:
+          # A PAT, not GITHUB_TOKEN: the upstream comment below is a write to a
+          # different repository, which GITHUB_TOKEN cannot do at all.
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
           script: |
-            const body = context.payload.pull_request.body || '';
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+
             const match = body.match(/#(\d+)/);
             if (!match) {
               core.info('No Issue reference in the PR body — nothing to close.');
               return;
             }
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: Number(match[1]),
-              state: 'closed',
-              state_reason: 'completed',
+            const number = Number(match[1]);
+
+            const { data: issue } = await github.rest.issues.get({
+              owner, repo, issue_number: number,
             });
-            core.info(`Closed Issue #${match[1]}`);
+
+            await github.rest.issues.update({
+              owner, repo, issue_number: number,
+              state: 'closed', state_reason: 'completed',
+            });
+            core.info(`Closed Issue #${number}`);
+
+            // Work commissioned from the control plane carries a back-reference,
+            // and without this the chain is one-way: the parent Issue asks for
+            // something and then never hears whether it happened. Whoever is
+            // watching the parent would have to go and look, which is the whole
+            // thing the control plane exists to avoid.
+            const parent = (issue.body || '')
+              .match(/<!-- parent: ([\w.-]+)\/([\w.-]+)#(\d+) -->/);
+            if (!parent) {
+              core.info(`#${number}: not commissioned from elsewhere.`);
+              return;
+            }
+
+            const [, upOwner, upRepo, upNumber] = parent;
+            try {
+              await github.rest.issues.createComment({
+                owner: upOwner, repo: upRepo, issue_number: Number(upNumber),
+                body: [
+                  `Done in \`${owner}/${repo}\`: ${pr.html_url} merged.`,
+                  '',
+                  `Closed ${owner}/${repo}#${number} — *${issue.title}*.`,
+                  '',
+                  `Merged as \`${pr.merge_commit_sha?.slice(0, 7) ?? 'unknown'}\` `
+                    + `(+${pr.additions ?? '?'} −${pr.deletions ?? '?'} across `
+                    + `${pr.changed_files ?? '?'} file(s)).`,
+                ].join('\n'),
+              });
+              core.info(`Reported upstream to ${upOwner}/${upRepo}#${upNumber}.`);
+            } catch (error) {
+              // A failure to report must not fail the merge that already
+              // happened. Warn loudly instead: the work is done either way, and
+              // an upstream that never hears is a visible problem, not a silent
+              // one.
+              core.warning(
+                `Could not report to ${upOwner}/${upRepo}#${upNumber}: ${error.message}`,
+              );
+            }
 
   # A red CI run on main has no pull request attached, so there is nothing to
   # comment on and the PR path below never sees it. That was the whole gap: the
