@@ -606,11 +606,16 @@ jobs:
               }
             }
 
-            // Two guards, and this is the second: the body must not carry the
-            // trigger phrase, or this comment would wake the workflow again.
-            if (body.includes(process.env.TRIGGER)) {
-              core.setFailed('Refusing to post a comment containing the trigger phrase.');
-              return;
+            // Two guards, and this is the second: this comment is posted with a
+            // token whose login is on the author allowlist, so a body carrying
+            // the trigger phrase would wake the workflow again, forever. It is
+            // neutralised rather than refused — a suppressed comment would leave
+            // a red run that nothing is subscribed to, which is how a failure
+            // becomes invisible.
+            const trigger = process.env.TRIGGER;
+            if (body.includes(trigger)) {
+              core.warning('The comment carried the trigger phrase; neutralised it.');
+              body = body.split(trigger).join('`the trigger phrase`');
             }
             if (!body.startsWith(marker)) body = `${marker}\n\n${body}`;
 
