@@ -1,0 +1,16 @@
+name: accent_protocol
+description: Wire types shared by the Accent app and the Accent gateway.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.0
+
+# Deliberately dependency-free. This package is imported by both the Flutter app
+# and the server, so every dependency added here has to be acceptable on both
+# sides. Hand-written JSON is a little more code than json_serializable, but it
+# keeps build_runner out of CI, and CI time is the scarce resource here.
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.26.0
