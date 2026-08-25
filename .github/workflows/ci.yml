@@ -4,15 +4,21 @@ name: CI
 # paths that do not exist yet would make the first run red, and the auto-fix loop
 # would start work on a false target.
 #
-# There is deliberately no `push` trigger: pushes to main will go through the
-# build workflow, which calls this one via `workflow_call`. Adding `push` here
-# would run the gate twice on every merge.
+# Runs on pull requests and on pushes to main. The `push` trigger was missing at
+# first, carried over from a repository where a separate build workflow invoked
+# this one through `workflow_call` — that workflow does not exist here, so the
+# result was that nothing ever ran and main was never tested at all.
 #
-# The standalone run on pull_request is required and load-bearing: a workflow
-# invoked through `workflow_call` does not produce its own run, and therefore
-# emits no `workflow_run` event — which is what the auto-fix loop listens for.
+# There is no duplication to worry about: with no `workflow_call` caller, a merge
+# produces exactly one run.
+#
+# The standalone run on pull_request is load-bearing: a workflow invoked through
+# `workflow_call` does not produce its own run, and therefore emits no
+# `workflow_run` event — which is what the auto-fix loop listens for.
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_call:
 
 concurrency:
