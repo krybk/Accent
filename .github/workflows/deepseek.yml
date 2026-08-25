@@ -1,0 +1,621 @@
+name: DeepSeek worker
+
+# A second, much cheaper model doing bounded mechanical work on request: a config
+# edit, a workflow tweak, a documentation pass, tests against a module that
+# already exists. Those should not cost a full Sonnet session.
+#
+# Single-shot, not agentic, and that is a decision rather than a simplification.
+# `claude-code-action` is a harness for the Anthropic Messages protocol; DeepSeek
+# speaks an OpenAI-compatible one, and tool-calling fidelity through a
+# translation layer fails *quietly* — the worst way for it to fail. So the shape
+# is: read the named files, send them with the instruction, receive their new
+# contents, write them back. One call, no tool loop, `temperature: 0`.
+#
+# Nothing watches this workflow's conclusion — `auto-fix-loop.yml` subscribes to
+# `CI` only. A red run here would therefore notify nobody, which is why every
+# refusal and every failure ends as one comment on the Issue and a green job.
+on:
+  issue_comment:
+    types: [created]
+
+# Two requests on one Issue queue rather than race: they would otherwise push to
+# branches derived from the same run-number space and fight over one worktree.
+concurrency:
+  group: deepseek-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  deepseek:
+    # A cost prefilter, not the gate. The gate is the first step below, which
+    # checks the author before it looks at the body at all — this expression only
+    # avoids starting a runner for every unrelated comment in the repository.
+    # `contains` is evaluated by Actions, not by a shell, so a comment body
+    # cannot do anything here.
+    if: contains(github.event.comment.body, '@deepseek')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    env:
+      # Flow control. Steps write `stopped` or `skip` into GITHUB_ENV and every
+      # later step is guarded on this, so a refusal walks calmly to the single
+      # comment at the end instead of failing the job.
+      WORKER_STATE: ok
+      # In everything this workflow posts. Two things depend on it: the gate
+      # skips any comment carrying it, so the worker cannot wake itself, and a
+      # human can tell at a glance who wrote a comment.
+      MARKER: "<!-- deepseek-worker -->"
+      # One spelling of the trigger phrase, used by the gate that admits a
+      # request and by the check that refuses to post a comment containing it.
+      TRIGGER: "@deepseek"
+      # Exact model ID, never a `-latest` alias: an alias will one day resolve to
+      # a pricier model with nothing in the logs changing.
+      MODEL: deepseek-chat
+      COMMENT_FILE: ${{ runner.temp }}/comment.md
+      BODY_FILE: ${{ runner.temp }}/request-body.txt
+      PAYLOAD_FILE: ${{ runner.temp }}/payload.json
+      PATHS_FILE: ${{ runner.temp }}/paths.txt
+      RESPONSE_FILE: ${{ runner.temp }}/response.json
+      MESSAGE_FILE: ${{ runner.temp }}/message.md
+      GATE_LOG: ${{ runner.temp }}/gate.log
+      COMMIT_FILE: ${{ runner.temp }}/commit.txt
+      PR_BODY_FILE: ${{ runner.temp }}/pr-body.md
+
+    steps:
+      # The shape of this gate is copied from claude.yml, including the order of
+      # the checks, because each part of it is load-bearing.
+      - name: Decide whether the worker should run
+        id: gate
+        # A comment body is attacker-controlled text in a public repository. It
+        # arrives through env and is quoted, never interpolated with ${{ }} into
+        # this script — that would let a comment run shell commands here.
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          # GitHub computes the login; it cannot be forged from the body.
+          AUTHOR: ${{ github.event.comment.user.login }}
+          IS_PULL_REQUEST: ${{ github.event.issue.pull_request != null }}
+          # Named logins rather than author_association, for the same reason as
+          # in claude.yml: OWNER/MEMBER/COLLABORATOR widens as people are added,
+          # which is the opposite of what a spend-and-write gate should do.
+          ALLOWED_AUTHORS: "krybk"
+        run: |
+          stop() {
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "WORKER_STATE=skip" >> "$GITHUB_ENV"
+            exit 0
+          }
+
+          # An empty author must never pass. Written as an explicit check
+          # because the alternative fails open: with both variables empty,
+          # `" " != *" "*` is false and the gate would admit everyone.
+          if [[ -z "$AUTHOR" ]]; then
+            echo "Author is empty — not running."
+            stop
+          fi
+
+          # Author before phrase, so a stranger's comment costs nothing at all.
+          if [[ " $ALLOWED_AUTHORS " != *" $AUTHOR "* ]]; then
+            echo "Author '$AUTHOR' is not on the allowed list — not running."
+            stop
+          fi
+
+          # This workflow's own comments are posted with AUTOMATION_TOKEN, whose
+          # login is on the list above. Without this check a comment it wrote
+          # that happened to contain the trigger phrase would wake it again,
+          # forever. The second, independent guard is that nothing it posts ever
+          # contains that phrase.
+          if [[ "$COMMENT_BODY" == *"$MARKER"* ]]; then
+            echo "This is one of the worker's own comments — not running."
+            stop
+          fi
+
+          if [[ "$COMMENT_BODY" != *"$TRIGGER"* ]]; then
+            echo "No trigger phrase — not running."
+            stop
+          fi
+
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+          # `issue_comment` fires on pull request comments too. "Apply this to
+          # the PR I am looking at" is a different feature with a different blast
+          # radius — a head branch that may be a fork — so it is refused here
+          # rather than half-supported.
+          echo "on_pull_request=$IS_PULL_REQUEST" >> "$GITHUB_OUTPUT"
+          echo "Running for a request from '$AUTHOR'."
+
+      - name: Requests are taken on Issues only
+        if: steps.gate.outputs.on_pull_request == 'true'
+        run: |
+          {
+            echo "$MARKER"
+            echo
+            echo "This worker takes requests on Issues only. Applying a patch to"
+            echo "the branch of an open pull request is a different job with a"
+            echo "different blast radius, and it is deliberately not this one."
+            echo
+            echo "Open an Issue with the same request, or push the change yourself."
+          } > "$COMMENT_FILE"
+          echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+
+      # Both secrets are checked here, after the author gate so a stranger's
+      # comment still costs nothing, and before anything that would fail on
+      # their absence. A job that dies with `Parameter required` or `Parameter
+      # token or opts.auth is required` teaches nobody anything — that exact
+      # failure has already cost a session. Since nothing watches this
+      # workflow's conclusion, the comment is the channel, and the job ends
+      # green.
+      - name: The secrets this job needs are present
+        if: env.WORKER_STATE == 'ok'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          missing=
+          [ -z "$DEEPSEEK_API_KEY" ] && missing="$missing \`DEEPSEEK_API_KEY\`"
+          [ -z "$AUTOMATION_TOKEN" ] && missing="$missing \`AUTOMATION_TOKEN\`"
+          if [ -n "$missing" ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "This request cannot be carried out: not set in this"
+              echo "repository:$missing."
+              echo
+              echo "Add it under Settings → Secrets and variables → Actions."
+              echo "\`DEEPSEEK_API_KEY\` is the model key; \`AUTOMATION_TOKEN\` is a"
+              echo "PAT with \`repo\` and \`workflow\` scope, so the pull request"
+              echo "this job opens actually starts CI."
+            } > "$COMMENT_FILE"
+            echo "::notice::Missing secret(s):$missing. Reported on the Issue; the job ends green because nothing watches this workflow's conclusion."
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "Both secrets are set."
+
+      # Every run branches from the default branch and targets it. There is no
+      # mode in which this worker builds on top of unmerged work.
+      - name: Checkout the default branch
+        if: env.WORKER_STATE == 'ok'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          token: ${{ secrets.AUTOMATION_TOKEN }}
+
+      # The request is parsed in Python, not here: the path list decides what
+      # gets overwritten, and a shell doing that with sed is how a half-written
+      # file happens. The module also validates every path — traversal, absolute
+      # paths, symlinks, the refused paths, the count and the size ceiling —
+      # before it reads a single file.
+      - name: Read the request and build the API payload
+        id: request
+        if: env.WORKER_STATE == 'ok'
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          printf '%s' "$COMMENT_BODY" > "$BODY_FILE"
+
+          set +e
+          python3 scripts/deepseek_apply.py request \
+            --body-file "$BODY_FILE" \
+            --payload "$PAYLOAD_FILE" \
+            --paths-file "$PATHS_FILE" \
+            --message-file "$MESSAGE_FILE"
+          code=$?
+          set -e
+
+          if [ "$code" -eq 2 ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "### The request was refused"
+              echo
+              cat "$MESSAGE_FILE"
+              echo
+              echo "No branch was created."
+            } > "$COMMENT_FILE"
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          [ "$code" -eq 0 ] || exit "$code"
+
+          echo "Requested files:"
+          cat "$PATHS_FILE"
+
+      # One POST, and the key never reaches a command line: curl reads the
+      # Authorization header from a config file on stdin, written by printf,
+      # which is a bash builtin — so it appears in no `ps` output and in no log.
+      - name: Ask the model for the new contents
+        id: call
+        if: env.WORKER_STATE == 'ok'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          set +e
+          status=$(printf 'header = "Authorization: Bearer %s"\n' "$DEEPSEEK_API_KEY" \
+            | curl --silent --show-error --config - \
+                --max-time 300 \
+                --header 'Content-Type: application/json' \
+                --data-binary @"$PAYLOAD_FILE" \
+                --output "$RESPONSE_FILE" \
+                --write-out '%{http_code}' \
+                'https://api.deepseek.com/chat/completions')
+          curl_code=$?
+          set -e
+
+          if [ "$curl_code" -ne 0 ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "### The model could not be reached"
+              echo
+              echo "\`curl\` exited $curl_code (a timeout, DNS, or TLS failure)."
+              echo "Nothing was written and no branch was created."
+            } > "$COMMENT_FILE"
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "HTTP $status"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      # All or nothing. The parser validates the whole answer — the path set
+      # exactly equal to the requested one, every fence closed, no four-backtick
+      # line inside contents, `finish_reason` of `stop` — before the first byte
+      # is written. A patch that half-applied is worse than one that did not: it
+      # leaves the branch in a state nobody wrote deliberately, and the gates
+      # then fail for reasons unrelated to the request.
+      - name: Apply the answer, or apply none of it
+        id: apply
+        if: env.WORKER_STATE == 'ok'
+        env:
+          HTTP_STATUS: ${{ steps.call.outputs.status }}
+        run: |
+          set +e
+          python3 scripts/deepseek_apply.py apply \
+            --response "$RESPONSE_FILE" \
+            --paths-file "$PATHS_FILE" \
+            --http-status "$HTTP_STATUS" \
+            --message-file "$MESSAGE_FILE"
+          code=$?
+          set -e
+
+          if [ "$code" -eq 2 ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "### The answer did not satisfy the response contract"
+              echo
+              cat "$MESSAGE_FILE"
+              echo
+              echo "Nothing was written, and no branch was created."
+            } > "$COMMENT_FILE"
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          [ "$code" -eq 0 ] || exit "$code"
+
+      # Belt and braces on top of the module: what changed in the worktree must
+      # be exactly what the request named. Cheap to check, and the one thing
+      # nobody wants to discover from a diff.
+      - name: Only the requested files changed
+        if: env.WORKER_STATE == 'ok'
+        run: |
+          changed=$(git status --porcelain=v1 --untracked-files=all \
+            | cut -c4- | sort -u)
+          expected=$(sort -u "$PATHS_FILE")
+
+          if [ -z "$changed" ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "The answer was byte-identical to the files as they stand, so"
+              echo "there is nothing to open a pull request for."
+            } > "$COMMENT_FILE"
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          if [ "$changed" != "$expected" ]; then
+            {
+              echo "$MARKER"
+              echo
+              echo "### Refusing to push"
+              echo
+              echo "The worktree changed in ways the request did not name."
+              echo "Changed:"
+              echo
+              echo '```'
+              echo "$changed"
+              echo '```'
+            } > "$COMMENT_FILE"
+            echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "$changed"
+
+      # Only the gates relevant to the touched paths. Running everything on every
+      # request spends minutes for nothing — and the toolchains are the expensive
+      # part, so which ones get installed is decided here too.
+      - name: Which gates apply
+        id: plan
+        if: env.WORKER_STATE == 'ok'
+        run: |
+          shellcheck=false; dart=false; flutter=false; apk=false
+          compose=false; pytests=false
+
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            case "$path" in
+              scripts/*.sh) shellcheck=true ;;
+            esac
+            case "$path" in
+              scripts/deepseek_apply.py|scripts/deepseek_apply_test.py) pytests=true ;;
+            esac
+            case "$path" in
+              protocol/*|gateway/*) dart=true ;;
+            esac
+            case "$path" in
+              app/*) flutter=true ;;
+            esac
+            case "$path" in
+              app/android/*|app/pubspec.yaml) apk=true ;;
+            esac
+            case "$path" in
+              gateway/docker-compose.yml|gateway/Dockerfile) compose=true ;;
+            esac
+          done < "$PATHS_FILE"
+
+          {
+            echo "shellcheck=$shellcheck"
+            echo "dart=$dart"
+            echo "flutter=$flutter"
+            echo "apk=$apk"
+            echo "compose=$compose"
+            echo "pytests=$pytests"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      # flutter-action brings its own Dart, so setting up both would be a
+      # download for nothing.
+      - name: Set up Dart
+        if: env.WORKER_STATE == 'ok' && steps.plan.outputs.dart == 'true' && steps.plan.outputs.flutter != 'true'
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Set up Flutter
+        if: env.WORKER_STATE == 'ok' && steps.plan.outputs.flutter == 'true'
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # These are not the safety net — the pull request never auto-merges, and a
+      # human reads it. They exist so the worker does not open a pull request
+      # that is already known to be red.
+      - name: Gates
+        if: env.WORKER_STATE == 'ok'
+        env:
+          NEEDS_SHELLCHECK: ${{ steps.plan.outputs.shellcheck }}
+          NEEDS_DART: ${{ steps.plan.outputs.dart }}
+          NEEDS_FLUTTER: ${{ steps.plan.outputs.flutter }}
+          NEEDS_APK: ${{ steps.plan.outputs.apk }}
+          NEEDS_COMPOSE: ${{ steps.plan.outputs.compose }}
+          NEEDS_PYTESTS: ${{ steps.plan.outputs.pytests }}
+        run: |
+          # Fixed command strings written here, never anything from the comment.
+          gate() {
+            echo "::group::$1"
+            if ! ( eval "$1" ) > "$GATE_LOG" 2>&1; then
+              tail -n 40 "$GATE_LOG"
+              echo "::endgroup::"
+              {
+                echo "$MARKER"
+                echo
+                echo "### The patch does not pass the gates"
+                echo
+                echo "\`$1\` failed. The last 40 lines:"
+                echo
+                echo '```'
+                tail -n 40 "$GATE_LOG"
+                echo '```'
+                echo
+                echo "Nothing was pushed, and no pull request was opened."
+              } > "$COMMENT_FILE"
+              echo "WORKER_STATE=stopped" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            tail -n 40 "$GATE_LOG"
+            echo "::endgroup::"
+          }
+
+          gate "./scripts/check-secrets.sh"
+
+          [ "$NEEDS_PYTESTS" = true ] && \
+            gate "python3 scripts/deepseek_apply_test.py"
+          [ "$NEEDS_SHELLCHECK" = true ] && \
+            gate "shellcheck scripts/*.sh"
+
+          if [ "$NEEDS_DART" = true ]; then
+            gate "cd protocol && dart pub get"
+            gate "cd gateway && dart pub get"
+            gate "dart format --output=none --set-exit-if-changed protocol gateway"
+            gate "cd protocol && dart analyze --fatal-infos"
+            gate "cd gateway && dart analyze --fatal-infos"
+            gate "cd protocol && dart test"
+            gate "cd gateway && dart test"
+          fi
+
+          if [ "$NEEDS_FLUTTER" = true ]; then
+            gate "cd app && flutter pub get"
+            gate "cd app && dart format --output=none --set-exit-if-changed lib test tool"
+            gate "cd app && flutter analyze"
+            gate "cd app && flutter test"
+          fi
+
+          [ "$NEEDS_APK" = true ] && gate "cd app && flutter build apk --debug"
+
+          [ "$NEEDS_COMPOSE" = true ] && gate "cp gateway/.env.example gateway/.env && docker compose -f gateway/docker-compose.yml --env-file gateway/.env config >/dev/null"
+
+          echo "Every relevant gate passed."
+
+      # Branch prefix `deepseek/`, and this is the whole mechanism that keeps
+      # unreviewed second-model output away from the merge path: the label job in
+      # claude.yml labels `auto-fixed` only for branches under `auto/`, and
+      # `handle-ci-result` in auto-fix-loop.yml merges only what carries that
+      # label. So this branch cannot reach auto-merge even when CI is green.
+      - name: Commit and push the branch
+        id: push
+        if: env.WORKER_STATE == 'ok'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          branch="deepseek/${ISSUE_NUMBER}-${RUN_NUMBER}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+
+          # Only the paths the request named. `--pathspec-from-file` rather than
+          # a shell expansion of the list: git reads the file itself, so nothing
+          # from the request is ever word-split.
+          git add --pathspec-from-file="$PATHS_FILE"
+
+          {
+            printf 'Apply a %s patch requested in #%s\n\n' "$MODEL" "$ISSUE_NUMBER"
+            printf 'Written by the single-shot worker: one API call, no tool loop,\n'
+            printf 'no review. The request is at %s\n\n' "$COMMENT_URL"
+            printf 'Files:\n'
+            sed 's/^/- /' "$PATHS_FILE"
+          } > "$COMMIT_FILE"
+
+          git commit -q -F "$COMMIT_FILE"
+          git push origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Open the pull request
+        id: pr
+        if: env.WORKER_STATE == 'ok'
+        env:
+          # A PAT rather than GITHUB_TOKEN, so CI actually starts on the pull
+          # request instead of waiting for "Approve workflows to run".
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+          BASE: ${{ github.event.repository.default_branch }}
+          BRANCH: ${{ steps.push.outputs.branch }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+          GATES: ${{ steps.plan.outputs.dart == 'true' && 'dart, ' || '' }}${{ steps.plan.outputs.flutter == 'true' && 'flutter, ' || '' }}check-secrets
+        run: |
+          # `Fixes #<n>` comes first on purpose. close-issue-on-merge in
+          # auto-fix-loop.yml takes the first `#<digits>` out of a merged pull
+          # request body, closes that Issue and reports upstream — and a human is
+          # the one merging here, so that chain is intended rather than accidental.
+          #
+          # The instruction itself is deliberately *not* quoted into this body.
+          # claude.yml triggers on `pull_request: opened` and gates on its own
+          # phrase appearing in the body, with this PAT's login on its allowlist:
+          # a request that happened to mention that phrase would start a full
+          # session off the back of a cheap one.
+          {
+            printf 'Fixes #%s\n\n' "$ISSUE_NUMBER"
+            printf 'The patch in this pull request was written by `%s` ' "$MODEL"
+            printf 'in a single API call — one shot, no tool loop, no review by '
+            printf 'anything. [The request](%s) named:\n\n' "$COMMENT_URL"
+            sed 's/^/- `/; s/$/`/' "$PATHS_FILE"
+            printf '\nGates run before the push: %s. They are not a safety net; ' "$GATES"
+            printf 'they only stop a pull request that is already known to be red.\n\n'
+            printf 'This branch is under `deepseek/`, so the label job in '
+            printf '`claude.yml` does not mark it `auto-fixed` and '
+            printf '`handle-ci-result` in `auto-fix-loop.yml` cannot merge it. '
+            printf 'A human merges this or nothing does.\n'
+          } > "$PR_BODY_FILE"
+
+          url=$(gh pr create \
+            --base "$BASE" \
+            --head "$BRANCH" \
+            --title "Apply a $MODEL patch requested in #$ISSUE_NUMBER" \
+            --body-file "$PR_BODY_FILE")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Opened $url"
+
+      - name: Label it for review, and never auto-fixed
+        if: env.WORKER_STATE == 'ok'
+        uses: actions/github-script@v8
+        env:
+          PR_URL: ${{ steps.pr.outputs.url }}
+        with:
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
+          script: |
+            // `ready-to-review` and nothing else. `auto-fixed` is what
+            // auto-fix-loop.yml merges on, and this output has been read by
+            // nobody.
+            const number = Number(process.env.PR_URL.split('/').pop());
+            try {
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: number,
+                labels: ['ready-to-review'],
+              });
+            } catch (error) {
+              // A label that will not attach must not lose the pull request.
+              core.warning(`Could not label #${number}: ${error.message}`);
+            }
+
+      - name: Say what happened, once
+        if: always() && env.WORKER_STATE != 'skip'
+        uses: actions/github-script@v8
+        env:
+          PR_URL: ${{ steps.pr.outputs.url }}
+        with:
+          # Falls back to GITHUB_TOKEN precisely so the "AUTOMATION_TOKEN is
+          # missing" case can still say so on the Issue. `require` is only ever
+          # asked for a Node builtin here: requiring a file from this repository
+          # is the failure documented in docs/known-failures.md.
+          github-token: ${{ secrets.AUTOMATION_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const marker = process.env.MARKER;
+            const file = process.env.COMMENT_FILE;
+
+            let body = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+
+            if (!body) {
+              if (process.env.WORKER_STATE === 'ok' && process.env.PR_URL) {
+                body = [
+                  marker,
+                  '',
+                  '### Patch opened as a pull request',
+                  '',
+                  process.env.PR_URL,
+                  '',
+                  'Written by `' + process.env.MODEL + '` in one call, and read by '
+                    + 'nobody yet. It is labelled `ready-to-review` and not '
+                    + '`auto-fixed`, so it waits for a human rather than for CI.',
+                ].join('\n');
+              } else {
+                // The job died somewhere without leaving a message. Saying so is
+                // the whole point: nothing watches this workflow's conclusion.
+                body = [
+                  marker,
+                  '',
+                  '### The worker failed before it could say why',
+                  '',
+                  `Nothing was pushed. The log is at ${context.serverUrl}/`
+                    + `${context.repo.owner}/${context.repo.repo}/actions/runs/`
+                    + `${context.runId}.`,
+                ].join('\n');
+              }
+            }
+
+            // Two guards, and this is the second: the body must not carry the
+            // trigger phrase, or this comment would wake the workflow again.
+            if (body.includes(process.env.TRIGGER)) {
+              core.setFailed('Refusing to post a comment containing the trigger phrase.');
+              return;
+            }
+            if (!body.startsWith(marker)) body = `${marker}\n\n${body}`;
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.issue.number,
+              body,
+            });
