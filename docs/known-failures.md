@@ -194,6 +194,30 @@ the job goes green — and the comment or Issue it writes triggers no further
 workflow, so `claude.yml` never wakes and the loop silently does nothing. Green
 and broken is worse than red.
 
+## "Claude encountered an error" on an Issue, with nothing else said
+
+**Symptom.** `claude.yml` reaches the action and fails there. The Issue gets a
+comment saying only that an error occurred. The job log's real line is:
+`Environment variable validation failed: Either ANTHROPIC_API_KEY,
+CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation ... is required when
+using direct Anthropic API.`
+
+**Cause.** A model key that is not set. The action maps its
+`anthropic_api_key` input to `ANTHROPIC_API_KEY`, so an empty
+`secrets.OPENROUTER_API_KEY` fails validation before any model call. The message
+is misleading twice over: it names three alternatives that are irrelevant here —
+we authenticate to OpenRouter, not to Anthropic directly — and it never says
+which secret is empty.
+
+**Fix.** Set `OPENROUTER_API_KEY`. A step now checks it and `AUTOMATION_TOKEN`
+up front and names whichever is missing.
+
+**Reading a log without admin rights:** the check-run annotations are public on a
+public repository, and they carry the error line. `curl -s
+".../check-runs/$JOB_ID/annotations"`, where `$JOB_ID` comes from
+`.../actions/runs/$RUN_ID/jobs`. The `.../jobs/$JOB_ID/logs` endpoint answers
+`403 Must have admin rights` — the annotations one does not.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.

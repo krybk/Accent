@@ -186,6 +186,33 @@ jobs:
           echo "should_run=true" >> "$GITHUB_OUTPUT"
           echo "model=$model" >> "$GITHUB_OUTPUT"
 
+      # Both secrets checked here, after the author gate so a stranger's issue
+      # still costs nothing, and before the action so the failure names itself.
+      #
+      # Without this, a missing model key surfaced as "Claude encountered an
+      # error" on the Issue and, in the log, as the action's own env-validation
+      # message listing three alternatives that mean nothing in this setup — we
+      # authenticate to OpenRouter, not to the Anthropic API directly. The
+      # useful information, which secret is empty, was the one thing absent.
+      - name: The secrets this job needs are present
+        if: steps.check.outputs.should_run == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          missing=
+          [ -z "$OPENROUTER_API_KEY" ] && missing="$missing OPENROUTER_API_KEY"
+          [ -z "$AUTOMATION_TOKEN" ] && missing="$missing AUTOMATION_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::Not set in this repository:$missing." \
+                 "Add them under Settings -> Secrets and variables -> Actions." \
+                 "OPENROUTER_API_KEY is the model key, passed as anthropic_api_key" \
+                 "and as ANTHROPIC_AUTH_TOKEN; AUTOMATION_TOKEN is a PAT with" \
+                 "'repo' and 'workflow' scope, needed so the PRs this job opens" \
+                 "start CI and may touch .github/workflows."
+            exit 1
+          fi
+
       # The action needs a checkout to run the project's tools.
       - name: Checkout
         if: steps.check.outputs.should_run == 'true'

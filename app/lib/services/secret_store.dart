@@ -60,9 +60,9 @@ class KeystoreSecretStore implements SecretStore {
 /// In-memory implementation for tests. Not for use in the app: it is exactly the
 /// guarantee-free storage that [KeystoreSecretStore] exists to avoid.
 class InMemorySecretStore implements SecretStore {
-  final Map<String,String> _values =   {};
+  final Map<String, String> _values = {};
 
-      Iterable<String> get keys => _values.keys;
+  Iterable<String> get keys => _values.keys;
 
   @override
   Future<String?> read(String key) async => _values[key];
