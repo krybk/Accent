@@ -9,8 +9,7 @@ import 'package:test/test.dart';
 T roundTrip<T>(
   Map<String, dynamic> Function() encode,
   T Function(Map<String, dynamic>) decode,
-) =>
-    decode(jsonDecode(jsonEncode(encode())) as Map<String, dynamic>);
+) => decode(jsonDecode(jsonEncode(encode())) as Map<String, dynamic>);
 
 void main() {
   group('ChatMessage', () {
@@ -29,14 +28,15 @@ void main() {
         ],
       );
 
-      final decoded =
-          roundTrip(original.toJson, ChatMessage.fromJson);
+      final decoded = roundTrip(original.toJson, ChatMessage.fromJson);
 
       expect(decoded.role, ChatRole.user);
       expect(decoded.text, original.text);
       expect(decoded.attachments.single.id, 'att_1');
-      expect(decoded.attachments.single.transcript,
-          'remind me to renew the certificate');
+      expect(
+        decoded.attachments.single.transcript,
+        'remind me to renew the certificate',
+      );
     });
 
     test('omits an empty attachment list rather than sending []', () {
@@ -94,8 +94,10 @@ void main() {
       );
 
       expect(sonnet.cacheSavingFactor, closeTo(10.0, 0.001));
-      expect(roundTrip(sonnet.toJson, ModelInfo.fromJson).minCacheableTokens,
-          1024);
+      expect(
+        roundTrip(sonnet.toJson, ModelInfo.fromJson).minCacheableTokens,
+        1024,
+      );
     });
 
     test('records that Haiku caches only behind a much longer prefix', () {
@@ -119,13 +121,23 @@ void main() {
 
   group('HealthStatus', () {
     test('is unhealthy when any single service is down', () {
-      const status = HealthStatus(version: '0.1.0', services: [
-        ServiceStatus(name: 'litellm', healthy: true),
-        ServiceStatus(name: 'postgres', healthy: false, detail: 'no connection'),
-      ]);
+      const status = HealthStatus(
+        version: '0.1.0',
+        services: [
+          ServiceStatus(name: 'litellm', healthy: true),
+          ServiceStatus(
+            name: 'postgres',
+            healthy: false,
+            detail: 'no connection',
+          ),
+        ],
+      );
 
       expect(status.allHealthy, isFalse);
-      expect(roundTrip(status.toJson, HealthStatus.fromJson).services.length, 2);
+      expect(
+        roundTrip(status.toJson, HealthStatus.fromJson).services.length,
+        2,
+      );
     });
   });
 

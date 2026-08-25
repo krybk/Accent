@@ -56,6 +56,36 @@ distinct endpoints.
 `cache_control`. And pin the provider in the request body:
 `"provider": {"order": ["Anthropic"], "allow_fallbacks": false}`.
 
+## The gateway image fails to build with a dependency downgrade
+
+**Symptom.** `docker build` reports `pub get` downgrading packages
+(`< analyzer 12.1.0 (was 14.1.0)`), or the AOT compile fails on paths that do
+not exist in the container.
+
+**Cause.** The host's `.dart_tool/` reached the build context and overwrote the
+`package_config.json` the container resolved for itself. The paths inside it
+point at the host filesystem, so the failure presents as a dependency problem
+rather than a copy problem. A floating base image (`dart:stable`) causes the same
+symptom for a different reason: the lockfile was resolved by one SDK and is being
+re-resolved by another.
+
+**Fix.** Keep `.dart_tool/` out of the context via `.dockerignore`, pin the SDK
+image to a specific minor version, and do not run a second `pub get` after
+copying source — the resolution from the manifest layer is meant to survive.
+
+**Do not revisit:** adding `dart pub get --offline` after the source copy. That
+was the original shape and it is what produced the downgrade; the offline flag
+hides the real problem instead of fixing it.
+
+## `dart compile exe` fails with `Cannot open file, path = '/out/...'`
+
+**Symptom.** AOT compilation fails immediately, complaining it cannot open the
+output path.
+
+**Cause.** `dart compile exe` does not create the output directory.
+
+**Fix.** `mkdir -p /out` in the same `RUN` layer.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.

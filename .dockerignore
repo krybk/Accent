@@ -1,0 +1,22 @@
+# Without this, the host's .dart_tool is copied into the image and overwrites the
+# package_config the container resolved for itself. The paths inside it point at
+# the host filesystem, so the build then fails in a way that looks like a
+# dependency problem rather than a copy problem.
+.dart_tool/
+**/.dart_tool/
+build/
+**/build/
+
+.git/
+node_modules/
+*.apk
+*.aab
+
+# Secrets must never enter a build context: anything here is readable from the
+# resulting image layers even if a later step deletes it.
+.env
+.env.*
+!.env.example
+*.pem
+*.jks
+*.keystore

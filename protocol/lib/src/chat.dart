@@ -12,9 +12,9 @@ enum ChatRole {
   system;
 
   static ChatRole fromJson(String value) => ChatRole.values.firstWhere(
-        (role) => role.name == value,
-        orElse: () => throw FormatException('unknown chat role: $value'),
-      );
+    (role) => role.name == value,
+    orElse: () => throw FormatException('unknown chat role: $value'),
+  );
 
   String toJson() => name;
 }
@@ -44,20 +44,20 @@ class Attachment {
   final String? transcript;
 
   factory Attachment.fromJson(Map<String, dynamic> json) => Attachment(
-        id: json['id'] as String,
-        mimeType: json['mime_type'] as String,
-        sizeBytes: json['size_bytes'] as int,
-        filename: json['filename'] as String?,
-        transcript: json['transcript'] as String?,
-      );
+    id: json['id'] as String,
+    mimeType: json['mime_type'] as String,
+    sizeBytes: json['size_bytes'] as int,
+    filename: json['filename'] as String?,
+    transcript: json['transcript'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'mime_type': mimeType,
-        'size_bytes': sizeBytes,
-        if (filename != null) 'filename': filename,
-        if (transcript != null) 'transcript': transcript,
-      };
+    'id': id,
+    'mime_type': mimeType,
+    'size_bytes': sizeBytes,
+    if (filename != null) 'filename': filename,
+    if (transcript != null) 'transcript': transcript,
+  };
 }
 
 class ChatMessage {
@@ -72,19 +72,19 @@ class ChatMessage {
   final List<Attachment> attachments;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        role: ChatRole.fromJson(json['role'] as String),
-        text: json['text'] as String,
-        attachments: (json['attachments'] as List<dynamic>? ?? const [])
-            .map((item) => Attachment.fromJson(item as Map<String, dynamic>))
-            .toList(growable: false),
-      );
+    role: ChatRole.fromJson(json['role'] as String),
+    text: json['text'] as String,
+    attachments: (json['attachments'] as List<dynamic>? ?? const [])
+        .map((item) => Attachment.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false),
+  );
 
   Map<String, dynamic> toJson() => {
-        'role': role.toJson(),
-        'text': text,
-        if (attachments.isNotEmpty)
-          'attachments': attachments.map((a) => a.toJson()).toList(),
-      };
+    'role': role.toJson(),
+    'text': text,
+    if (attachments.isNotEmpty)
+      'attachments': attachments.map((a) => a.toJson()).toList(),
+  };
 }
 
 class ChatRequest {
@@ -103,18 +103,18 @@ class ChatRequest {
   final String? conversationId;
 
   factory ChatRequest.fromJson(Map<String, dynamic> json) => ChatRequest(
-        model: json['model'] as String,
-        messages: (json['messages'] as List<dynamic>)
-            .map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
-            .toList(growable: false),
-        conversationId: json['conversation_id'] as String?,
-      );
+    model: json['model'] as String,
+    messages: (json['messages'] as List<dynamic>)
+        .map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
+        .toList(growable: false),
+    conversationId: json['conversation_id'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        'model': model,
-        'messages': messages.map((m) => m.toJson()).toList(),
-        if (conversationId != null) 'conversation_id': conversationId,
-      };
+    'model': model,
+    'messages': messages.map((m) => m.toJson()).toList(),
+    if (conversationId != null) 'conversation_id': conversationId,
+  };
 }
 
 /// What a single call actually consumed.
@@ -146,20 +146,20 @@ class Usage {
   bool get servedFromCache => cacheReadTokens > 0;
 
   factory Usage.fromJson(Map<String, dynamic> json) => Usage(
-        inputTokens: json['input_tokens'] as int,
-        outputTokens: json['output_tokens'] as int,
-        cacheReadTokens: json['cache_read_tokens'] as int? ?? 0,
-        cacheWriteTokens: json['cache_write_tokens'] as int? ?? 0,
-        costUsd: (json['cost_usd'] as num?)?.toDouble(),
-      );
+    inputTokens: json['input_tokens'] as int,
+    outputTokens: json['output_tokens'] as int,
+    cacheReadTokens: json['cache_read_tokens'] as int? ?? 0,
+    cacheWriteTokens: json['cache_write_tokens'] as int? ?? 0,
+    costUsd: (json['cost_usd'] as num?)?.toDouble(),
+  );
 
   Map<String, dynamic> toJson() => {
-        'input_tokens': inputTokens,
-        'output_tokens': outputTokens,
-        'cache_read_tokens': cacheReadTokens,
-        'cache_write_tokens': cacheWriteTokens,
-        if (costUsd != null) 'cost_usd': costUsd,
-      };
+    'input_tokens': inputTokens,
+    'output_tokens': outputTokens,
+    'cache_read_tokens': cacheReadTokens,
+    'cache_write_tokens': cacheWriteTokens,
+    if (costUsd != null) 'cost_usd': costUsd,
+  };
 }
 
 /// One frame of a streamed answer.
@@ -180,18 +180,18 @@ class ChatChunk {
   final String? model;
 
   factory ChatChunk.fromJson(Map<String, dynamic> json) => ChatChunk(
-        text: json['text'] as String?,
-        done: json['done'] as bool? ?? false,
-        usage: json['usage'] == null
-            ? null
-            : Usage.fromJson(json['usage'] as Map<String, dynamic>),
-        model: json['model'] as String?,
-      );
+    text: json['text'] as String?,
+    done: json['done'] as bool? ?? false,
+    usage: json['usage'] == null
+        ? null
+        : Usage.fromJson(json['usage'] as Map<String, dynamic>),
+    model: json['model'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (text != null) 'text': text,
-        if (done) 'done': true,
-        if (usage != null) 'usage': usage!.toJson(),
-        if (model != null) 'model': model,
-      };
+    if (text != null) 'text': text,
+    if (done) 'done': true,
+    if (usage != null) 'usage': usage!.toJson(),
+    if (model != null) 'model': model,
+  };
 }

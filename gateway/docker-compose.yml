@@ -1,0 +1,89 @@
+# The stack the app deploys onto a server during bootstrap.
+#
+# Only Caddy publishes a port. The gateway, LiteLLM and Postgres are reachable
+# on the internal network only, so the single authenticated entry point is
+# :8443 — there is no second door to forget about.
+
+name: accent
+
+services:
+  # TLS termination and the only published port. Caddy issues its own
+  # certificate from an internal CA during bootstrap; the app pins that
+  # certificate, which is why a public hostname and ACME are not required to get
+  # real transport security.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-8443}:8443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      GATEWAY_TOKEN: ${GATEWAY_TOKEN:?set GATEWAY_TOKEN in .env}
+      LITELLM_URL: http://litellm:4000
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+      DATABASE_URL: postgres://accent:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/accent
+    volumes:
+      # Deploying containers on request is the point of the product, and that
+      # requires the Docker socket. It is also root-equivalent on the host, which
+      # is why the gateway token must be treated as seriously as the root
+      # password. A socket proxy with an operation allowlist is planned.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - gateway-data:/var/lib/accent
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Hits the unauthenticated liveness path, not /v1/health: a health check
+      # must not need a credential, or a rotated token would take the stack down.
+      test: ["CMD", "/app/bin/healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      DATABASE_URL: postgres://accent:${POSTGRES_PASSWORD}@postgres:5432/accent
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: accent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: accent
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accent -d accent"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  caddy-data:
+  caddy-config:
+  gateway-data:
+  postgres-data:

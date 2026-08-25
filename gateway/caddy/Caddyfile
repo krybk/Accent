@@ -1,0 +1,33 @@
+# Caddy fronts the gateway and terminates TLS.
+#
+# `tls internal` issues a certificate from Caddy's own CA rather than going to
+# Let's Encrypt. That is deliberate: a server added from the app may have no
+# public hostname and no inbound port 80, so ACME would fail. The app pins this
+# certificate during bootstrap, which gives real transport security without
+# depending on public DNS.
+
+{
+	# No ACME account is needed for an internal CA, and admin API off means one
+	# fewer unauthenticated surface inside the container network.
+	admin off
+	auto_https disable_redirects
+}
+
+:8443 {
+	tls internal
+
+	# The gateway is the only upstream. Everything, including authentication,
+	# happens there — Caddy deliberately holds no credentials, so rotating the
+	# gateway token never requires touching this file.
+	reverse_proxy gateway:8080 {
+		# Model answers stream token by token. Without flushing, Caddy would
+		# buffer them and the chat would arrive in one block after a long
+		# silence, which reads as a hang.
+		flush_interval -1
+	}
+
+	log {
+		output stderr
+		format console
+	}
+}

@@ -1,9 +1,8 @@
 name: CI
 
-# Fast quality gate. Jobs are added alongside the code they check: `frontend`
-# arrives with the app, `gateway` with the compose stack. Referencing paths that
-# do not exist yet would make the very first run red, and the auto-fix loop would
-# start work on a false target.
+# Fast quality gate. Jobs are added alongside the code they check — referencing
+# paths that do not exist yet would make the first run red, and the auto-fix loop
+# would start work on a false target.
 #
 # There is deliberately no `push` trigger: pushes to main will go through the
 # build workflow, which calls this one via `workflow_call`. Adding `push` here
@@ -38,3 +37,81 @@ jobs:
       # is preinstalled on the ubuntu-latest image, so there is nothing to set up.
       - name: Shellcheck
         run: shellcheck scripts/*.sh
+
+  # protocol and gateway share one job. They are both plain Dart packages that
+  # analyse and test in seconds, and gateway depends on protocol by path, so a
+  # separate runner would only re-fetch the same dependencies.
+  dart:
+    name: dart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Resolve dependencies
+        run: |
+          cd protocol && dart pub get
+          cd ../gateway && dart pub get
+
+      # Formatting is checked before analysis: a formatting failure is
+      # mechanical to fix, and reporting it first saves reading analyser output
+      # that will shift line numbers anyway.
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed protocol gateway
+
+      - name: Analyze
+        run: |
+          cd protocol && dart analyze --fatal-infos
+          cd ../gateway && dart analyze --fatal-infos
+
+      - name: Tests
+        run: |
+          cd protocol && dart test
+          cd ../gateway && dart test
+
+  gateway-stack:
+    name: gateway stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Validates service references and variable substitution without starting
+      # anything. Catches the class of typo that would otherwise surface as an
+      # opaque failure on a user's server during bootstrap.
+      - name: Validate compose
+        run: |
+          cp gateway/.env.example gateway/.env
+          docker compose -f gateway/docker-compose.yml --env-file gateway/.env config >/dev/null
+          echo "compose is valid"
+
+      # The image is built but not pushed. The gateway is compiled ahead of time,
+      # so a build failure here is a compile failure — worth catching in CI
+      # rather than during a bootstrap on someone's phone.
+      - name: Build the gateway image
+        run: docker build -f gateway/Dockerfile -t accent-gateway:ci .
+
+      - name: The image starts and serves liveness
+        run: |
+          docker run -d --name gw -p 8080:8080 \
+            -e GATEWAY_TOKEN=ci-token-long-enough-to-pass-validation \
+            -e LITELLM_MASTER_KEY=ci-key \
+            accent-gateway:ci
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://localhost:8080/live >/dev/null 2>&1; then
+              echo "liveness answered after ${attempt} attempt(s)"
+              break
+            fi
+            if [ "$attempt" -eq 20 ]; then
+              echo "liveness never answered"; docker logs gw; exit 1
+            fi
+            sleep 1
+          done
+          # An unauthenticated request to a real endpoint must be refused. This
+          # is the check that would catch a middleware wired in the wrong order.
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/v1/models)
+          test "$code" = "401" || { echo "expected 401, got $code"; exit 1; }
+          echo "unauthenticated request correctly refused"
+          docker rm -f gw

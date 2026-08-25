@@ -1,0 +1,66 @@
+# LiteLLM routing config.
+#
+# One model_name per tier, so the app selects "sonnet" and not a provider-
+# specific string. Swapping the underlying model then becomes an edit here plus a
+# visible commit, rather than a silent change of what the app is paying for.
+#
+# Two settings repeat on every entry, and both cost money when omitted:
+#
+#   1. Exact model IDs, never OpenRouter's ~family-latest aliases. An alias will
+#      one day resolve to a pricier model without anything in the logs changing.
+#
+#   2. provider.order with allow_fallbacks: false. Anthropic models on OpenRouter
+#      are served by up to nine endpoints (Anthropic, Google, Azure, Bedrock at
+#      differing prices). Unpinned, adjacent requests land on different providers
+#      and the prompt cache does not survive the move — measured, not assumed.
+
+model_list:
+  # Mechanical work behind a long stable prefix. Cheap only above ~4096 tokens
+  # of prefix: below that Haiku does not cache at all, and its input then costs
+  # more than Sonnet's cached input. See .claude/journal.md.
+  - model_name: haiku
+    litellm_params:
+      model: openrouter/anthropic/claude-haiku-4.5
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        provider:
+          order: ["Anthropic"]
+          allow_fallbacks: false
+
+  # Default tier for ordinary work.
+  - model_name: sonnet
+    litellm_params:
+      model: openrouter/anthropic/claude-sonnet-5
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        provider:
+          order: ["Anthropic"]
+          allow_fallbacks: false
+
+  # Hard problems and exact architecture. Five times a Haiku turn, so it is
+  # chosen deliberately, never as a fallback.
+  - model_name: opus
+    litellm_params:
+      model: openrouter/anthropic/claude-opus-5
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        provider:
+          order: ["Anthropic"]
+          allow_fallbacks: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+
+litellm_settings:
+  # Per-call spend lands in Postgres. This is the whole reason LiteLLM is here
+  # rather than a hand-rolled proxy: without per-call attribution there is no way
+  # to tell whether a routing change saved anything.
+  success_callback: ["postgres"]
+  failure_callback: ["postgres"]
+  # Return usage on streamed responses too. Without it the closing frame carries
+  # no token counts, and cache hits become invisible precisely where most of the
+  # spend happens.
+  stream_options:
+    include_usage: true
+  drop_params: false
