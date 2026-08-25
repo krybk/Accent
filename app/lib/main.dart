@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 
 import 'screens/servers_screen.dart';
+import 'services/profile_repository.dart';
+import 'services/secret_store.dart';
 
-void main() => runApp(const AccentApp());
+/// The repository is built here, once, and handed down.
+///
+/// One instance because it is the only door to the key store, and a second one
+/// would be a second view of the same profile list that can fall out of step
+/// with the first. It is a parameter rather than a global so that a test can
+/// build the app over [InMemorySecretStore], which is the only way these screens
+/// can be tested at all: the Keystore lives behind a platform channel.
+void main() =>
+    runApp(AccentApp(profiles: ProfileRepository(KeystoreSecretStore())));
 
 class AccentApp extends StatelessWidget {
-  const AccentApp({super.key});
+  const AccentApp({required this.profiles, super.key});
+
+  final ProfileRepository profiles;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +37,7 @@ class AccentApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const ServersScreen(),
+      home: ServersScreen(profiles: profiles),
     );
   }
 }
