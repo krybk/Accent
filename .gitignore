@@ -1,0 +1,37 @@
+# Репозиторий публичный. Всё, что ниже, при попадании в историю означает
+# скомпрометированный сервер или подписной ключ, а не просто мусор в диффе.
+# Поэтому список ведётся вместе с scripts/check-secrets.sh: любое новое место,
+# где может завестись секрет, добавляется одновременно сюда и туда.
+
+# Секреты и учётные данные
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testdata/*.key
+*.jks
+*.keystore
+authorized_keys
+id_ed25519*
+id_rsa*
+
+# Состояние развёрнутого шлюза: генерится на целевом сервере, не в репозитории
+gateway/data/
+gateway/caddy/data/
+gateway/caddy/config/
+
+# Сборка
+node_modules/
+dist/
+target/
+app/src-tauri/target/
+app/src-tauri/gen/android/app/build/
+*.apk
+*.aab
+
+# Инструменты
+.DS_Store
+*.log
+.vscode/
+.idea/
