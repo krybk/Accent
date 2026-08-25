@@ -21,10 +21,24 @@ status=0
 # the check would fail on its own source.
 while IFS='|' read -r label pattern; do
   [ -z "$label" ] && continue
-  # git ls-files rather than a recursive grep: we check what will actually enter
-  # history, and we do not trip over node_modules or target.
-  if hits=$(git ls-files -z \
-    | xargs -0 grep -nIE "$pattern" 2>/dev/null); then
+
+  # `git grep` rather than `git ls-files | xargs grep`, and the difference is not
+  # style — the old form was fail-open.
+  #
+  # xargs exits 123 if *any* command it ran exited non-zero, and grep exits 1
+  # when it finds nothing. So the moment the file list stops fitting in one exec
+  # and xargs splits it into batches, one clean batch makes xargs return 123 even
+  # though another batch matched. 123 is not 0, the `if` was therefore false,
+  # `status` stayed 0, and the gate went green over a key it had actually found.
+  # This repository is public, so that is the case where it matters most.
+  #
+  # A guard that exists for exactly one occasion must not decide by exit code
+  # what it can decide by looking at the output.
+  #
+  # -e, not a bare argument: the PEM pattern begins with a dash and would
+  # otherwise be read as an option.
+  hits=$(git grep -nIE -e "$pattern" || true)
+  if [ -n "$hits" ]; then
     echo "Secret found ($label):"
     echo "$hits"
     status=1
@@ -41,7 +55,12 @@ PATTERNS
 # Files that must never be in history under any name. This list mirrors the
 # secret half of .gitignore; the two must not drift apart.
 forbidden='(^|/)(\.env(\..*)?|id_ed25519|id_rsa|authorized_keys|key\.properties)$|\.(pem|jks|keystore)$'
-if tracked=$(git ls-files | grep -E "$forbidden" | grep -v '\.env\.example$'); then
+# Same rule as above: decide on the output being non-empty, not on the exit code
+# of the last stage of a pipeline. Here it happened to be correct, but correct by
+# accident, and two checks written differently is how one of them gets "fixed"
+# into the other's old shape.
+tracked=$(git ls-files | grep -E "$forbidden" | grep -v '\.env\.example$' || true)
+if [ -n "$tracked" ]; then
   echo "Tracked files that must not be versioned:"
   echo "$tracked"
   status=1

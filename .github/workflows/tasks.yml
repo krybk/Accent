@@ -82,9 +82,21 @@ jobs:
               // marker exists to keep the CI-repair loop on Sonnet so it cannot
               // escalate itself; a commissioned feature is the case the model
               // routing reserves Opus for. See claude.yml.
+              // No "@claude" in the created body, and that is the fix for a race
+              // rather than a style choice. `issues.create` raises `issues:
+              // opened` immediately, carrying the body as created — before the
+              // update below substitutes the Issue number. A session woken by
+              // that event read `Fixes #__ISSUE__` literally and had no number to
+              // close anything with. Editing the body afterwards does not help:
+              // claude.yml listens for `opened` and `created`, not `edited`, so
+              // the corrected body wakes nothing by itself.
+              //
+              // So the Issue is filed silently and the mention goes in a comment
+              // below, once the number is known. `issue_comment: created` is a
+              // trigger claude.yml does handle.
               const body = [
                 marker,
-                `@claude ${heading[1]}`,
+                heading[1],
                 '',
                 `Specification: [\`${rel}\`](${context.serverUrl}/${owner}/${repo}/blob/${context.sha}/${rel}).`,
                 'It is reproduced below, and the file is the authority if the two',
@@ -120,7 +132,20 @@ jobs:
                 body: body.replaceAll('__ISSUE__', String(issue.number)),
               });
 
-              core.info(`${rel}: filed #${issue.number}.`);
+              // Only now, with the body correct, wake a session. This comment is
+              // what carries the mention; the Issue body deliberately does not.
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: issue.number,
+                body: [
+                  `@claude ${heading[1]}`,
+                  '',
+                  'The specification is the Issue body above, and the task file it',
+                  'quotes is the authority if the two disagree. Read it before',
+                  'starting rather than working from this line.',
+                ].join('\n'),
+              });
+
+              core.info(`${rel}: filed #${issue.number}, session requested.`);
             }
 
             // A task whose file is gone has been withdrawn. Deleting the spec is
