@@ -58,19 +58,11 @@ android {
 
     buildTypes {
         release {
-            // Falling back to the debug key would be worse than failing: a
-            // debug-signed APK installs fine, so nobody notices until the first
-            // real update, which then cannot be installed over it at all —
-            // Android refuses an upgrade whose signature changed. Users would
-            // have to uninstall and lose their server profiles.
-            //
-            // So: no key.properties, no release build.
+            // Left null when there is no key.properties. Nothing signs a release
+            // by accident as a result: the task-graph check below stops the build
+            // before it gets that far. The check has to live there rather than
+            // here — see the comment on it.
             signingConfig = signingConfigs.findByName("release")
-                ?: throw GradleException(
-                    "Release signing is not configured. Provide android/key.properties " +
-                        "(see key.properties.example). Refusing to sign a release with " +
-                        "the debug key: it would make every future update uninstallable."
-                )
 
             isMinifyEnabled = true
             isShrinkResources = true
@@ -79,6 +71,29 @@ android {
                 "proguard-rules.pro",
             )
         }
+    }
+}
+
+// No key.properties, no release build.
+//
+// Falling back to the debug key would be worse than failing: a debug-signed APK
+// installs fine, so nobody notices until the first real update, which then
+// cannot be installed over it at all — Android refuses an upgrade whose
+// signature changed. Users would have to uninstall and lose their server
+// profiles.
+//
+// Checked against the task graph rather than inside the `release` buildType,
+// because that block is evaluated during configuration for *every* invocation.
+// Throwing from there failed `flutter build apk --debug` too, which is the build
+// CI runs — so the guard for releases broke the check that never signs anything.
+val releaseTask = Regex("^(assemble|bundle|package)\\w*Release$")
+gradle.taskGraph.whenReady {
+    if (keystoreProperties.isEmpty() && allTasks.any { releaseTask.matches(it.name) }) {
+        throw GradleException(
+            "Release signing is not configured. Provide android/key.properties " +
+                "(see key.properties.example). Refusing to sign a release with " +
+                "the debug key: it would make every future update uninstallable."
+        )
     }
 }
 

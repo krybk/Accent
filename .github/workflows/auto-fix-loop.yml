@@ -41,14 +41,141 @@ jobs:
             });
             core.info(`Closed Issue #${match[1]}`);
 
+  # A red CI run on main has no pull request attached, so there is nothing to
+  # comment on and the PR path below never sees it. That was the whole gap: the
+  # loop looked like it covered build failures and in fact covered only the ones
+  # that happened inside a PR. An Issue is the wake-up channel here, since
+  # claude.yml already listens for `issues: opened`.
+  handle-main-failure:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: The automation PAT is present
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$AUTOMATION_TOKEN" ]; then
+            echo "::error::secrets.AUTOMATION_TOKEN is not set in this repository." \
+                 "Create a PAT with 'repo' and 'workflow' scope and add it under" \
+                 "Settings -> Secrets and variables -> Actions. GITHUB_TOKEN cannot" \
+                 "substitute: events it raises do not trigger claude.yml, so the" \
+                 "Issue would be filed and never answered."
+            exit 1
+          fi
+
+      - name: File an Issue asking Claude to fix main
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.AUTOMATION_TOKEN }}
+          script: |
+            const MARKER = '<!-- automated-request -->';
+            const run = context.payload.workflow_run;
+            const { owner, repo } = context.repo;
+
+            // Which jobs actually failed. This is both the useful part of the
+            // report and the deduplication key: two different breakages on main
+            // should get two Issues, the same one re-pushed should not.
+            const jobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRun,
+              { owner, repo, run_id: run.id, per_page: 100 },
+            );
+            const failed = jobs
+              .filter((j) => j.conclusion === 'failure')
+              .map((j) => ({
+                job: j.name,
+                steps: j.steps
+                  .filter((s) => s.conclusion === 'failure')
+                  .map((s) => s.name),
+              }));
+
+            if (failed.length === 0) {
+              core.info('The run is red but no job is — nothing actionable.');
+              return;
+            }
+
+            const signature = failed
+              .map((f) => `${f.job}/${f.steps.join('+') || '?'}`)
+              .join(', ');
+            const title = `CI red on main: ${signature}`;
+
+            // Dedup against open Issues only. A closed one means the cause was
+            // dealt with; if it comes back it deserves a fresh Issue rather than
+            // a comment on something already marked done.
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: 'ci-failure', per_page: 100,
+            });
+            const duplicate = open.find((i) => i.title === title);
+            if (duplicate) {
+              core.info(`Already open as #${duplicate.number} — not filing again.`);
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${run.id}`;
+            const body = [
+              MARKER,
+              `@claude CI is red on \`main\` at ${run.head_sha.slice(0, 7)}.`,
+              `[Run log](${runUrl}).`,
+              '',
+              '**Failed:**',
+              ...failed.map((f) => `- \`${f.job}\` at ${f.steps.map((s) => `*${s}*`).join(', ') || 'an unnamed step'}`),
+              '',
+              'Read `docs/known-failures.md` before investigating — the cause may',
+              'already be diagnosed there. Fix it on a branch and open a PR; do not',
+              'push to `main` directly, since the PR is what gets checked.',
+              '',
+              'Run every gate CI runs before pushing — the `app/` package is a',
+              'separate one and is easy to leave out:',
+              '',
+              '- `dart format protocol gateway`, and in `app/`: `dart format lib test tool`.',
+              '  CI checks with `--output=none --set-exit-if-changed`, which writes',
+              '  nothing — reformat first, then verify.',
+              '- in `protocol/` and `gateway/`: `dart analyze --fatal-infos`, `dart test`.',
+              '- in `app/`: `flutter analyze`, `flutter test`, `flutter build apk --debug`.',
+              '',
+              'If the cause is new, add it to `docs/known-failures.md` in the same PR.',
+            ].join('\n');
+
+            const { data: issue } = await github.rest.issues.create({
+              owner, repo, title, body, labels: ['ci-failure'],
+            });
+            core.info(`Filed #${issue.number} for: ${signature}`);
+
   handle-ci-result:
-    if: github.event_name == 'workflow_run'
+    # Only CI runs that came from a pull request. Without the second condition
+    # this job also woke on every push to main, where there is no PR to merge
+    # or comment on — it would call the API, find nothing, and the only visible
+    # effect was a red job on a commit whose CI was green. Pushes to main are
+    # handled by handle-main-failure above.
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
       pull-requests: write
     steps:
+      # github-script fails with "Parameter token or opts.auth is required" when
+      # the PAT is absent, which says nothing about what to do. Checked here so
+      # the log names the missing secret instead.
+      - name: The automation PAT is present
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$AUTOMATION_TOKEN" ]; then
+            echo "::error::secrets.AUTOMATION_TOKEN is not set in this repository." \
+                 "Create a PAT with 'repo' and 'workflow' scope and add it under" \
+                 "Settings -> Secrets and variables -> Actions. GITHUB_TOKEN cannot" \
+                 "substitute: events it raises do not trigger claude.yml, so the" \
+                 "retry comment would be posted and never answered."
+            exit 1
+          fi
+
       - name: Merge on green, or ask Claude to retry on red
         uses: actions/github-script@v8
         with:
@@ -114,8 +241,25 @@ jobs:
                 // check pass by weakening the check. A PR that edits the gates
                 // themselves therefore never merges unread, however green it is:
                 // green would then be measuring whatever the PR just rewrote.
+                //
+                // `.github/workflows/` used to be on this list and no longer is,
+                // by a deliberate decision. The trigger wiring lives there, and
+                // when it breaks the loop cannot repair itself — the first real
+                // failure in this repository was exactly that, a missing `push`
+                // trigger that meant nothing ever ran. A loop that cannot fix its
+                // own plumbing needs a human for every such break, which defeats
+                // the point of having it.
+                //
+                // What stays guarded is narrower and chosen for irreversibility:
+                // the secrets gate and .gitignore. A weakened workflow costs a
+                // bad merge, which is revertible. A leaked signing key or SSH key
+                // in a public repository is not — it must be revoked and
+                // reissued, and it is public from the moment it is pushed.
+                //
+                // Note this only widens what may merge unread. It does not widen
+                // who may ask: the author allowlist in claude.yml still gates
+                // that, and it is what keeps a stranger from reaching this path.
                 const guarded = [
-                  /^\.github\/workflows\//,
                   /^scripts\/check-secrets\.sh$/,
                   /^\.gitignore$/,
                 ];
@@ -203,9 +347,15 @@ jobs:
                   '',
                   'Read `docs/known-failures.md` first — this failure may already be diagnosed there.',
                   '',
-                  'Fix the cause and update this branch. Before pushing, run locally:',
-                  '`dart format --output=none --set-exit-if-changed protocol gateway`,',
-                  'then in each of `protocol/` and `gateway/`: `dart analyze --fatal-infos` and `dart test`.',
+                  'Fix the cause and update this branch. Before pushing, run every',
+                  'gate CI runs — the `app/` package is a separate one, and leaving it',
+                  'out of this list is how a formatting failure reached CI before:',
+                  '',
+                  '- `dart format protocol gateway` and, in `app/`, `dart format lib test tool`.',
+                  '  Note the missing flags: `--output=none --set-exit-if-changed` is the',
+                  '  check CI runs, and it writes nothing. Reformat first, then verify.',
+                  '- in each of `protocol/` and `gateway/`: `dart analyze --fatal-infos`, `dart test`.',
+                  '- in `app/`: `flutter analyze`, `flutter test`.',
                   '',
                   'If you touched prompts or model routing, also run',
                   '`node scripts/cache-canary.js` — prompt caching breaks silently.',

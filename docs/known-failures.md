@@ -140,6 +140,60 @@ than the SDK floor declared in `pubspec.yaml`.
 the latter: a lower floor means the app builds across a wider range of SDKs, and
 the generated counter demo was going to be replaced anyway.
 
+## `flutter build apk --debug` fails with "Release signing is not configured"
+
+**Symptom.** The debug build — the one CI runs — dies during Gradle
+configuration with the message about missing `key.properties`, on a build that
+signs nothing.
+
+**Cause.** The check was written inside `buildTypes { release { ... } }`. That
+block is evaluated on the configuration pass for *every* invocation, not only
+when a release task runs, so `throw GradleException` there fails `assembleDebug`
+as well. A guard meant to protect releases disabled the only Android check CI
+has.
+
+**Fix.** Leave `signingConfig` null when the material is absent and hang the
+check off the task graph instead: `gradle.taskGraph.whenReady` plus a match on
+`^(assemble|bundle|package)\w*Release$`. Verified both ways — `--debug` builds,
+`--release` still refuses.
+
+**Do not revisit:** any variant that decides inside the `release` block. The
+block's evaluation is unconditional; no condition written there can distinguish
+which task was requested.
+
+## Nothing runs at all — no workflow runs in the repository's history
+
+**Symptom.** Actions lists the workflows as active, `total_count` from
+`/actions/runs` is 0, and `main` is not being tested by anything.
+
+**Cause.** `ci.yml` carried `pull_request` and `workflow_call` triggers but no
+`push`, copied from a repository where a separate build workflow invoked it
+through `workflow_call`. No such caller exists here, so nothing ever invoked it.
+
+**Fix.** Add `push: branches: [main]`. With no `workflow_call` caller there is no
+double-run to worry about. Keep the standalone `pull_request` trigger: a workflow
+invoked via `workflow_call` produces no run of its own and therefore no
+`workflow_run` event, which is what the auto-fix loop listens for.
+
+## `Auto-Fix Loop Monitor` fails on a commit whose CI was green
+
+**Symptom.** `handle-ci-result` is red immediately, at the first script step,
+often with `Parameter token or opts.auth is required`.
+
+**Cause.** Two independent problems presenting as one. First, the job woke on
+CI runs from `push`, where there is no PR to merge or comment on. Second,
+`secrets.AUTOMATION_TOKEN` was not set, and `actions/github-script` given an
+empty token fails with a message that names nothing actionable.
+
+**Fix.** Gate the PR job on `github.event.workflow_run.event == 'pull_request'`,
+handle push failures in a separate job that files an Issue, and check the secret
+in an explicit step so the log names it.
+
+**Do not revisit:** substituting `secrets.GITHUB_TOKEN`. It authenticates, so
+the job goes green — and the comment or Issue it writes triggers no further
+workflow, so `claude.yml` never wakes and the loop silently does nothing. Green
+and broken is worse than red.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.
