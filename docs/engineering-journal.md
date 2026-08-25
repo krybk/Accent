@@ -200,3 +200,39 @@ breakdown — `/api/v1/activity` needs a provisioning key. But
 `/api/v1/generation?id=` is readable with an ordinary key and returns the actual
 cost of a specific call. That is enough for the canary to report what the provider
 charged instead of what a price list implies.
+
+## 2026-08-25. dartssh2 3.3.1 separates stdout from stderr for you
+
+Building the SSH session interface meant reading the pinned `dartssh2` 3.3.1
+source rather than trusting the probe, which had run against 2.22.5. One API fact
+changes how remote commands should be run, and it is not the obvious path:
+
+- **`SSHClient.run` returns the two streams merged.** Its own doc says "combined
+  command output", and the probe uses it — fine for a probe that only needs to
+  see something come back. For a bootstrap it is the wrong call: a failed
+  `docker compose up` says everything useful on stderr, and merged output cannot
+  be reported as a cause.
+- **`SSHClient.runWithResult` exists in 3.x and returns
+  `SSHRunResult(output, stdout, stderr, exitCode, exitSignal)`.** So there is no
+  reason to drop to `execute()` and collect the channels by hand — which is the
+  shape you land on if you assume `run` is all there is. Doing it by hand also
+  invites a real bug the package already handles: the two stream completions must
+  be awaited together, because awaiting one and then the other leaves the second
+  without an error handler until the first finishes, turning a stream error into
+  an uncaught one.
+
+`exitCode` is `int?`. Null means the process died on a signal or the server sent
+no exit status. Both are failures for our purposes, so the app folds null into
+`-1` rather than pushing a null check onto every caller whose two branches would
+be identical.
+
+Also settled while pinning the encoding by test: the base64 of a correct
+`ssh-ed25519` blob always begins `AAAAC3NzaC1lZDI1NTE5AAAAI`, because the first
+19 bytes are fixed (the length-prefixed algorithm name, then the length 32). That
+prefix is a free external check on the wire format — if a line does not start
+with it, the encoding is wrong, and no server is needed to find out.
+
+**What this does not close:** the open item from the probe entry above asked for
+the *chain* to be re-verified on 3.x. This was an API-level check against the
+pinned source plus host-only tests. Password auth, SFTP and reconnect-by-key have
+not been re-run against a live server on 3.3.1.
