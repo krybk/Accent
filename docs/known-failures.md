@@ -218,6 +218,39 @@ public repository, and they carry the error line. `curl -s
 `.../actions/runs/$RUN_ID/jobs`. The `.../jobs/$JOB_ID/logs` endpoint answers
 `403 Must have admin rights` — the annotations one does not.
 
+## The loop pushes a branch and no pull request appears
+
+**Symptom.** The Issue gets a full report — cause found, fix applied, gates run —
+a branch under `auto/` exists with the right commit, and the job is red with
+`Claude reported a successful result after 26 turns, exceeding the configured
+maximum of 25`. Nothing merges.
+
+**Cause.** Two things at once. `--max-turns` was low enough that the session ran
+out on the last step, and the action does not open pull requests at all: it
+pushes a branch and offers a compare link. A link raises no `pull_request`
+event, so the label job never fires and the merge chain never starts.
+
+**Fix.** `--max-turns 60`, `GH_TOKEN` in the action's env so `gh` can
+authenticate, and an explicit instruction in the Issue to finish with
+`gh pr create`. A turn ceiling that cannot reach the end does not cap cost, it
+doubles it — the retry starts from nothing.
+
+**Do not revisit:** putting explanatory `#` lines inside `claude_args`. It is a
+block scalar, so those lines become CLI arguments.
+
+## A failure recurs and no Issue is filed
+
+**Symptom.** CI is red on main, `handle-main-failure` is green, and no Issue
+appears. The log says `Already open as #N — not filing again`.
+
+**Cause.** Deduplication keyed on the title of open `ci-failure` Issues and
+returned silently. An Issue left open by an attempt that did not finish then
+suppressed that signature permanently.
+
+**Fix.** On a duplicate, comment on the existing Issue with the marker and
+`@claude` instead of returning, capped by counting marker comments the same way
+the pull request path does. After the cap it gets `needs-human`.
+
 ## `./scripts/check-secrets.sh` fails CI
 
 **Symptom.** The run fails on the secrets step.

@@ -110,8 +110,48 @@ jobs:
               owner, repo, state: 'open', labels: 'ci-failure', per_page: 100,
             });
             const duplicate = open.find((i) => i.title === title);
+
+            // An open Issue with this signature means the previous attempt did
+            // not finish — the fix never merged, or the session died. Returning
+            // here silently was wrong: it turned "do not file twice" into "never
+            // act on this signature again", and a stale Issue then suppressed
+            // every future occurrence of that failure for good. Two of them
+            // existed within an hour of this loop first running.
+            //
+            // So: nudge the existing Issue instead, under the same attempt cap
+            // the pull request path uses. The marker makes the comment countable
+            // and keeps it on Sonnet; it has to say "@claude" to wake anything.
+            const MAX_ATTEMPTS = 1;
             if (duplicate) {
-              core.info(`Already open as #${duplicate.number} — not filing again.`);
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: duplicate.number, per_page: 100,
+              });
+              const attempts = comments.filter((c) => (c.body || '').includes(MARKER)).length;
+
+              if (attempts >= MAX_ATTEMPTS) {
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: duplicate.number, labels: ['needs-human'],
+                });
+                core.warning(
+                  `#${duplicate.number}: still failing after ${attempts} nudge(s) — a human is needed.`,
+                );
+                return;
+              }
+
+              const url = `${context.serverUrl}/${owner}/${repo}/actions/runs/${run.id}`;
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: duplicate.number,
+                body: [
+                  MARKER,
+                  `@claude still failing, now at ${run.head_sha.slice(0, 7)}.`,
+                  `[Run log](${url}).`,
+                  '',
+                  'The instructions in the first message still apply — including',
+                  'finishing with `gh pr create`. A branch without a pull request',
+                  'is why this Issue is still open.',
+                ].join('\n'),
+              });
+              core.info(`#${duplicate.number}: nudged, attempt ${attempts + 1}.`);
               return;
             }
 
