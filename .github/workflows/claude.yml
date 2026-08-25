@@ -248,11 +248,31 @@ jobs:
           # job labels by this prefix, and auto-merge in auto-fix-loop.yml only
           # merges what carries the label. A mismatch stops auto-merge silently.
           branch_prefix: "auto/"
+          # Note that `claude_args` is a block scalar, so a `#` line inside it is
+          # not a comment — it becomes an argument. Commentary belongs out here.
+          #
+          # --max-turns was 25, which was too tight, and it failed in the
+          # expensive way: the session diagnosed the failure, fixed it, ran every
+          # gate and pushed a branch, then died on turn 26 before opening the
+          # pull request. We paid for all of it and merged none of it, while the
+          # action reported failure — so the loop looked broken with the work
+          # sitting on a branch nobody was watching.
+          #
+          # A ceiling that low is a false economy. Cost is turns, so a budget
+          # that cannot reach the end multiplies it rather than capping it: the
+          # retry starts over from nothing.
           claude_args: |
             --model "${{ steps.check.outputs.model }}"
-            --max-turns 25
+            --max-turns 60
             --allowedTools "Bash(git:*), Bash(gh:*), Bash(dart:*), Bash(flutter:*), Bash(docker:*), Bash(ls:*), Bash(cat:*), Bash(grep:*), Bash(find:*), Bash(mkdir:*), Bash(cp:*), Bash(mv:*), Bash(jq:*), Bash(node:*), Bash(python3:*), Edit, Read, Write, Glob, Grep"
         env:
+          # `gh` reads this. Without it the session can push a branch — git is
+          # authenticated by the action — and then cannot open a pull request,
+          # which is where the chain actually continues: the label job listens
+          # for `pull_request`, and a compare link is not an event. The PAT
+          # rather than GITHUB_TOKEN for the same reason as everywhere else, so
+          # the PR starts CI instead of waiting for approval.
+          GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
           # OpenRouter serves an Anthropic Messages-compatible endpoint at
           # /api/v1/messages, so this base URL is correct as written.
           ANTHROPIC_BASE_URL: "https://openrouter.ai/api"

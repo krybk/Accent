@@ -125,24 +125,46 @@ jobs:
               ...failed.map((f) => `- \`${f.job}\` at ${f.steps.map((s) => `*${s}*`).join(', ') || 'an unnamed step'}`),
               '',
               'Read `docs/known-failures.md` before investigating — the cause may',
-              'already be diagnosed there. Fix it on a branch and open a PR; do not',
-              'push to `main` directly, since the PR is what gets checked.',
+              'already be diagnosed there.',
               '',
-              'Run every gate CI runs before pushing — the `app/` package is a',
-              'separate one and is easy to leave out:',
+              '**Finish by opening a pull request.** `gh pr create --base main`,',
+              'with `Fixes #__ISSUE__` in the body. This is not optional and it is not',
+              'the same as posting a compare link: the rest of the chain reacts to',
+              'the `pull_request` event, and the line closing this Issue is parsed',
+              'out of that body. A branch with no PR is work nobody collects — it',
+              'has happened, and the whole session was paid for and wasted.',
+              'Do not push to `main`; the PR is what gets checked.',
               '',
-              '- `dart format protocol gateway`, and in `app/`: `dart format lib test tool`.',
-              '  CI checks with `--output=none --set-exit-if-changed`, which writes',
-              '  nothing — reformat first, then verify.',
-              '- in `protocol/` and `gateway/`: `dart analyze --fatal-infos`, `dart test`.',
-              '- in `app/`: `flutter analyze`, `flutter test`, `flutter build apk --debug`.',
+              'Reproduce the failing gate first, then run the gates for whatever you',
+              'actually touched. Running all of them on every fix costs turns you may',
+              'need to reach the PR:',
+              '',
+              '- format: `dart format protocol gateway`, and in `app/`:',
+              '  `dart format lib test tool`. CI checks with',
+              '  `--output=none --set-exit-if-changed`, which writes nothing —',
+              '  reformat first, then verify.',
+              '- `protocol/`, `gateway/`: `dart analyze --fatal-infos`, `dart test`.',
+              '- `app/`: `flutter analyze`, `flutter test`.',
+              '- `app/` only if you touched Gradle, the manifest or a plugin:',
+              '  `flutter build apk --debug`. It takes minutes; skip it otherwise.',
               '',
               'If the cause is new, add it to `docs/known-failures.md` in the same PR.',
+              'If it was deliberate — a commit message will say so — do not add one.',
             ].join('\n');
 
             const { data: issue } = await github.rest.issues.create({
               owner, repo, title, body, labels: ['ci-failure'],
             });
+
+            // The body has to name its own Issue number, and that number does
+            // not exist until the Issue does. So it goes in as a placeholder and
+            // is substituted here. The number is what close-issue-on-merge later
+            // parses out of the pull request body.
+            await github.rest.issues.update({
+              owner, repo, issue_number: issue.number,
+              body: body.replaceAll('__ISSUE__', String(issue.number)),
+            });
+
             core.info(`Filed #${issue.number} for: ${signature}`);
 
   handle-ci-result:
