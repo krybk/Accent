@@ -1,100 +1,136 @@
-# Журнал: что выяснено и почему решено так
+# Journal: what was found, and why things were decided this way
 
-Память между сессиями. `CLAUDE.md` держит короткие правила, здесь — как эти
-правила добыты и что стоит за решениями, чтобы никто не переоткрывал одно и то
-же и не откатывал сделанное из-за забытой причины.
+Memory between sessions. `CLAUDE.md` holds the short rules; this file holds how
+those rules were arrived at and what stands behind each decision, so nobody
+rediscovers the same thing twice or reverts work over a forgotten reason.
 
-Правила ведения: одна запись — один разобранный вопрос. Дата, факт, замер,
-вывод. Опровергнутые собственные гипотезы не удалять — они дороже подтверждённых,
-потому что именно на них тратится время повторно.
+House rules: one entry per question settled. Date, fact, measurement,
+conclusion. Do not delete hypotheses of your own that were disproved — they are
+worth more than the confirmed ones, because those are exactly what time gets
+spent on again.
 
-**Репозиторий публичный.** Сюда идут выводы, воспроизводимые кем угодно:
-поведение моделей, пороги, цены, устройство API. Сюда не идут имена и адреса
-рабочих серверов, остатки по счетам и прочее, что описывает конкретную
-инфраструктуру, — такие заметки живут вне репозитория.
+**The repository is public.** What belongs here is anything reproducible by
+anyone: model behaviour, thresholds, prices, how an API is shaped. What does not
+belong here is the names and addresses of working servers, account balances, and
+anything else describing specific infrastructure — those notes live outside the
+repository.
 
 ---
 
-## 2026-08-25. Сломанный дешёвый тариф
+## 2026-08-25. A broken cheap tier
 
-В окружении стояло `ANTHROPIC_DEFAULT_HAIKU_MODEL="anthropic/claude-haiku-5"`.
-Такой модели на OpenRouter нет. Каждое обращение к дешёвому тарифу — фоновые
-сводки, подзадачи, служебные вызовы — падало с `400 ... is not a valid model ID`,
-и работа уезжала на тарифы дороже. Наткнулся случайно: в сессии упала попытка
-загрузить страницу.
+The environment had `ANTHROPIC_DEFAULT_HAIKU_MODEL="anthropic/claude-haiku-5"`.
+No such model exists on OpenRouter. Every call to the cheap tier — background
+summaries, subtasks, housekeeping calls — failed with
+`400 ... is not a valid model ID`, and the work went to more expensive tiers.
+Found by accident: a page fetch failed mid-session.
 
-Исправлено на `anthropic/claude-haiku-4.5`, все три тарифа проверены живым
-вызовом.
+Fixed to `anthropic/claude-haiku-4.5`; all three tiers verified with live calls.
 
-**Вывод про диагностику:** сломанный дешёвый тариф не виден в счёте как ошибка —
-он виден как «почему-то дорого». Проверять существование ID при смене модели, а
-не после следующего счёта.
+**Conclusion about diagnosis:** a broken cheap tier does not show up in the bill
+as an error. It shows up as "somehow expensive". Verify that a model ID exists
+when changing it, not after the next invoice.
 
-**Вывод в правила:** точные ID моделей, никаких алиасов `~*-latest`.
+## 2026-08-25. Disproved: "Anthropic on OpenRouter has a single provider"
 
-## 2026-08-25. Опровергнуто: «у Anthropic на OpenRouter один провайдер»
+I claimed that pinning a provider for Anthropic models was pointless — one
+provider, so `provider.order` with `allow_fallbacks: false` changes nothing.
+**This is wrong.** `GET /api/v1/models/{id}/endpoints` shows eight endpoints for
+`anthropic/claude-haiku-4.5` and nine for `anthropic/claude-sonnet-5`: Anthropic,
+Google, Azure and Amazon Bedrock in several variants, at differing prices (some
+carry roughly a 10% markup).
 
-Я утверждал, что закреплять провайдера для моделей Anthropic бессмысленно —
-якобы провайдер один, и `provider.order` с `allow_fallbacks: false` ничего не
-меняет. **Это неверно.** `GET /api/v1/models/{id}/endpoints` показывает у
-`anthropic/claude-haiku-4.5` восемь эндпоинтов, у `anthropic/claude-sonnet-5` —
-девять: Anthropic, Google, Azure, Amazon Bedrock в нескольких вариантах, с
-разными ценами (у части наценка ~10%).
+Measurement: unpinned, two adjacent requests both went to Amazon Bedrock; pinned,
+both went to Anthropic. The `provider` field is accepted and honoured on the
+`/api/v1/messages` endpoint.
 
-Замер: без закрепления два соседних запроса ушли в Amazon Bedrock, с
-закреплением — в Anthropic. Параметр `provider` в теле принимается и работает на
-эндпоинте `/api/v1/messages`.
+**Conclusion into the rules:** pin the provider on every request. The
+requirement as originally stated was right; my objections were not.
 
-**Вывод в правила:** закреплять провайдера в каждом запросе. Требование
-заказчика было правильным, мои возражения — нет.
+## 2026-08-25. Haiku's caching threshold is four times higher
 
-## 2026-08-25. Порог кеширования у Haiku вчетверо выше
+The cache canary showed something odd: a 1844-token prefix caches on Sonnet 5 and
+does not cache on Haiku 4.5. The first hypothesis — a 2048 threshold on Haiku
+against 1024 on Sonnet — **was not confirmed**: at 2452 tokens the cache still
+was not created. The second hypothesis, provider routing, was **also not
+confirmed**: pinning Anthropic changed nothing.
 
-Канарейка на кеш показала странное: префикс на 1844 токена кешируется на
-Sonnet 5 и не кешируется на Haiku 4.5. Первая гипотеза — порог 2048 у Haiku
-против 1024 у Sonnet — **не подтвердилась**: на 2452 токенах кеш всё равно не
-создавался. Вторая гипотеза — роутинг между провайдерами — тоже не подтвердилась:
-с закреплённым Anthropic результат не изменился.
+Threshold measured by stepping up, provider pinned:
 
-Замер порога перебором, провайдер закреплён:
-
-| Префикс | Запись в кеш |
+| Prefix | Cache write |
 | --- | --- |
-| 2447 токенов | 0 |
-| 3663 токена | 0 |
-| 4879 токенов | 4866 |
+| 2447 tokens | 0 |
+| 3663 tokens | 0 |
+| 4879 tokens | 4866 |
 
-Порог Haiku 4.5 — около **4096** токенов, вчетверо выше, чем у Sonnet и Opus.
-Ниже порога кеш не создаётся молча: ни ошибки, ни предупреждения.
+Haiku 4.5's threshold is around **4096** tokens, four times higher than Sonnet
+and Opus. Below it the cache is not created silently: no error, no warning.
 
-**Неочевидное следствие:** на префиксе короче 4096 токенов вход Haiku стоит
-$1.00/1M, тогда как кешированный вход Sonnet — $0.20/1M. То есть Haiku на
-коротких запросах в пять раз ДОРОЖЕ Sonnet с рабочим кешем. «Дешёвый тариф»
-дешёвый только на длинном стабильном префиксе.
+**Non-obvious consequence:** on a prefix shorter than 4096 tokens, Haiku input
+costs $1.00/1M while Sonnet's cached input costs $0.20/1M. On short requests the
+"cheap" tier is five times more expensive than Sonnet with a working cache. The
+cheap tier is only cheap behind a long, stable prefix.
 
-## 2026-08-25. Сколько стоит кеш на самом деле
+## 2026-08-25. What caching actually costs
 
-Замер на одном и том же префиксе (~4870 токенов), стоимость из
-`/api/v1/generation`, а не расчётом по прайсу:
+Measured on one and the same prefix (~4870 tokens), cost taken from
+`/api/v1/generation` rather than computed from a price list:
 
 | | Sonnet 5 | Haiku 4.5 |
 | --- | --- | --- |
-| запись в кеш | $0.012262 | — |
-| чтение из кеша | $0.001044 | $0.000540 |
+| cache write | $0.012262 | — |
+| cache read | $0.001044 | $0.000540 |
 
-Разница между записью и чтением у Sonnet — 12 раз. Это подтверждает главное
-правило экономии: рабочий кеш важнее выбора тарифа. Отсюда решение гонять
-`cache-canary.js` после любой правки промптов, а не «когда вспомним».
+The gap between writing and reading on Sonnet is a factor of twelve. This
+confirms the main cost rule: a working cache matters more than the choice of
+tier. Hence the decision to run `cache-canary.js` after any change to prompts,
+rather than "when we remember to".
 
-## 2026-08-25. Ограничения целевого окружения
+## 2026-08-25. Escalating from a smaller model to a larger one
 
-Проверено на рабочем сервере проекта (4 ядра, 8 Гб памяти): Docker есть, а вот
-Java и Android SDK нет. Следствие для конвейера: **APK собирается только в CI**,
-локальной сборки мобильной части не будет, и рассчитывать на неё в инструкциях
-нельзя.
+Proposal on the table: give the task to Haiku, escalate to Sonnet when it gets
+stuck, and have Opus check the result regardless. Worked through with the numbers
+above, for a typical loop (~30k-token stable prefix, ~15 steps):
 
-По учёту расхода: обычный ключ OpenRouter не отдаёт разбивку по моделям — для
-`/api/v1/activity` нужен provisioning-ключ. Зато `/api/v1/generation?id=`
-читается обычным ключом и возвращает фактическую стоимость конкретного вызова.
-Этого достаточно, чтобы канарейка показывала не расчёт по прайсу, а то, что
-списал провайдер.
+| | Haiku 4.5 | Sonnet 5 | Opus 5 |
+| --- | --- | --- | --- |
+| one attempt | ~$0.14 | ~$0.31 | ~$0.70 |
+
+A Haiku attempt costs 0.45 of a Sonnet attempt, so the ladder beats
+Sonnet-only when Haiku solves more than **45%** of incidents on its own. Without
+a working cache the same arithmetic puts the break-even near 70%, where the
+ladder almost certainly loses — so caching is a precondition for the ladder, not
+an add-on to it.
+
+Three corrections to the shape of it:
+
+- **Opus must never run unconditionally.** An unconditional Opus pass adds $0.70
+  to every incident against a $0.31 baseline — three times today's cost at any
+  success rate. Opus is the last rung, not a final reviewer.
+- **A model cannot switch itself.** Which model runs is decided by the workflow
+  before the run starts; an instruction in the prompt cannot change it. The
+  ladder lives in the orchestration.
+- **"Stuck" must be judged objectively.** A weaker model frequently does not know
+  it failed and will report success. The CI verdict is the available objective
+  signal, and the auto-fix loop already keys on it.
+
+Also: escalation must hand over a **summary**, not a transcript. Each tier has
+its own cache, so a handover inflates the prefix the stronger model has to write
+at 12.5x the read price, and it drags the weaker model's dead ends along.
+
+Decision: not yet settled. What is needed first is per-attempt logging of model
+and actual cost from `/api/v1/generation`, because the real success rate is
+currently unknown and the ladder would otherwise be a guess.
+
+## 2026-08-25. Constraints of the target environment
+
+Verified on the project's working server (4 cores, 8 GB RAM): Docker is present,
+Java and the Android SDK are not. Consequence for the pipeline: **the APK is
+built in CI only**; there is no local build of the mobile half, and instructions
+must not assume one.
+
+On spend accounting: an ordinary OpenRouter key does not return a per-model
+breakdown — `/api/v1/activity` needs a provisioning key. But
+`/api/v1/generation?id=` is readable with an ordinary key and returns the actual
+cost of a specific call. That is enough for the canary to report what the provider
+charged instead of what a price list implies.

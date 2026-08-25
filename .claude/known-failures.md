@@ -1,65 +1,69 @@
-# Известные сбои
+# Known failures
 
-Разобранные причины падений CI и сборки. Читай **до** исследования репозитория,
-если чинишь упавший прогон: скорее всего причина уже здесь.
+Diagnosed causes of CI and build failures. Read this **before** investigating the
+repository when fixing a red run — the cause is probably already here.
 
-Формат записи: симптом, причина, решение. Если решение пробовали и оно не
-сработало — так и пиши, с пометкой «не возвращать». Такие записи ценнее
-удачных: они экономят прогон, а прогон стоит денег.
+Entry format: symptom, cause, fix. If a fix was tried and did not work, say so
+and mark it "do not revisit". Those entries are worth more than the successful
+ones: they save a run, and a run costs money.
 
 ---
 
 ## `400 ... is not a valid model ID`
 
-**Симптом.** Любой вызов модели падает с этим кодом, чаще всего на служебных
-операциях (фоновые сводки, подзадачи, загрузка страниц), а не на основном ответе.
+**Symptom.** Any model call fails with this code, most often on housekeeping
+operations (background summaries, subtasks, page fetches) rather than on the main
+answer.
 
-**Причина.** В окружении или в workflow указан несуществующий ID модели.
-Наступали на `anthropic/claude-haiku-5` — такого семейства на OpenRouter нет.
+**Cause.** A non-existent model ID in the environment or in a workflow. We hit
+this with `anthropic/claude-haiku-5` — no such family exists on OpenRouter.
 
-**Решение.** Сверить ID со списком: `curl -s https://openrouter.ai/api/v1/models
-| jq -r '.data[].id' | grep anthropic`. Действующие: `anthropic/claude-opus-5`,
-`anthropic/claude-sonnet-5`, `anthropic/claude-haiku-4.5`.
+**Fix.** Check the ID against the live list: `curl -s
+https://openrouter.ai/api/v1/models | jq -r '.data[].id' | grep anthropic`.
+Current: `anthropic/claude-opus-5`, `anthropic/claude-sonnet-5`,
+`anthropic/claude-haiku-4.5`.
 
-**Не возвращать:** алиасы вида `~anthropic/claude-haiku-latest`. Они валидны, но
-молча переезжают на другую модель, и подорожание прогонов будет невидимым.
+**Do not revisit:** aliases of the form `~anthropic/claude-haiku-latest`. They
+are valid, but they silently move to a different model, which makes a price
+increase invisible.
 
-## Канарейка кеша падает с «Кеш НЕ создан»
+## The cache canary fails with "Cache NOT created"
 
-**Симптом.** `node scripts/cache-canary.js` сообщает, что первый запрос не
-записал в кеш ни одного токена.
+**Symptom.** `node scripts/cache-canary.js` reports that request 1 wrote zero
+tokens to cache.
 
-**Причина.** Префикс короче минимального кешируемого размера для этой модели.
-Порог зависит от тарифа и отличается вчетверо: ~1024 токена у Sonnet и Opus,
-~4096 у Haiku 4.5. Ниже порога кеш не создаётся молча.
+**Cause.** The prefix is shorter than the minimum cacheable size for that model.
+The threshold is tier-dependent and differs by a factor of four: ~1024 tokens on
+Sonnet and Opus, ~4096 on Haiku 4.5. Below it the cache is silently not created.
 
-**Решение.** Удлинить стабильную часть префикса выше порога либо принять, что на
-короткой задаче кеша не будет — и тогда считать Haiku не дешёвым, а дорогим
-(подробности в `.claude/journal.md`).
+**Fix.** Either extend the stable part of the prefix past the threshold, or accept
+that a short task will not cache — and in that case treat Haiku as expensive
+rather than cheap (details in `.claude/journal.md`).
 
-**Не возвращать:** гипотезу «порог у Haiku 2048». Проверено, на 2452 токенах кеш
-не создаётся.
+**Do not revisit:** the hypothesis that Haiku's threshold is 2048. Checked; at
+2452 tokens the cache is still not created.
 
-## Канарейка кеша падает с «Кеш создан, но НЕ прочитан»
+## The cache canary fails with "Cache created but NOT read"
 
-**Симптом.** Первый запрос пишет в кеш, второй читает ноль.
+**Symptom.** Request 1 writes to cache, request 2 reads zero.
 
-**Причина.** Либо префикс изменился между запросами (дата, идентификатор,
-счётчик внутри кешируемой части), либо запросы ушли к разным провайдерам.
-Второе — не редкость даже для моделей Anthropic: на OpenRouter их раздают до
-девяти разных эндпоинтов.
+**Cause.** Either the prefix changed between requests (a date, an id, a counter
+inside the cached part), or the requests went to different providers. The latter
+is not rare even for Anthropic models: OpenRouter serves them from up to nine
+distinct endpoints.
 
-**Решение.** Убрать переменную часть из префикса — она должна стоять **после**
-`cache_control`. И закрепить провайдера в теле запроса:
+**Fix.** Move the variable part out of the prefix — it belongs **after**
+`cache_control`. And pin the provider in the request body:
 `"provider": {"order": ["Anthropic"], "allow_fallbacks": false}`.
 
-## `./scripts/check-secrets.sh` роняет CI
+## `./scripts/check-secrets.sh` fails CI
 
-**Симптом.** Прогон падает на шаге проверки секретов.
+**Symptom.** The run fails on the secrets step.
 
-**Причина.** В индекс попал ключ известного формата или файл из запрещённого
-списка (`.env`, `*.pem`, `*.jks`, приватный SSH-ключ).
+**Cause.** A key in a known format, or a file from the forbidden list (`.env`,
+`*.pem`, `*.jks`, a private SSH key), reached the index.
 
-**Решение.** Убрать файл из индекса (`git rm --cached`), добавить путь в
-`.gitignore`. Если секрет уже попал в опубликованный коммит — недостаточно
-удалить файл: **ключ нужно отозвать и перевыпустить**, история публичная.
+**Fix.** Remove the file from the index (`git rm --cached`) and add the path to
+`.gitignore`. If the secret already reached a published commit, deleting the file
+is not enough: **the key must be revoked and reissued**, because the history is
+public.

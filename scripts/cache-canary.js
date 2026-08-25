@@ -1,40 +1,40 @@
 #!/usr/bin/env node
 //
-// Канарейка на кеширование промпта.
+// Prompt-caching canary.
 //
-// Зачем. Основная статья расхода в агентном цикле — не длина ответа, а
-// повторная пересылка истории на каждом вызове инструмента. Кеш снижает её
-// примерно в десять раз: чтение из кеша стоит $0.20/1M против $2.00/1M входа у
-// Sonnet 5. Но кеш ломается молча — любое изменение байта в префиксе, и вы
-// платите полную цену, не получая ни ошибки, ни предупреждения.
+// Why this exists. The dominant cost in an agentic loop is not the length of the
+// answer, it is resending the history on every tool call. Caching cuts that by
+// roughly an order of magnitude: a cache read costs $0.20/1M against $2.00/1M
+// for fresh input on Sonnet 5. But caching breaks silently — change one byte in
+// the prefix and you pay full price, with no error and no warning.
 //
-// Что делает. Два запроса с одинаковым префиксом. Первый должен ЗАПИСАТЬ кеш,
-// второй — ПРОЧИТАТЬ. Если второй читает ноль, кеш не работает, и скрипт падает.
-// Точную стоимость обоих запросов берём из /api/v1/generation, а не считаем
-// сами: так видно, что списал провайдер, а не что мы думаем про тарифы.
+// What it does. Two requests sharing a prefix. The first must WRITE the cache,
+// the second must READ it. If the second reads zero, caching is not working and
+// this script fails. Both costs come from /api/v1/generation rather than from
+// our own arithmetic, so what you see is what the provider actually charged.
 //
-// Запуск: OPENROUTER_API_KEY=... node scripts/cache-canary.js [модель]
+// Usage: OPENROUTER_API_KEY=... node scripts/cache-canary.js [model]
 
 const API = 'https://openrouter.ai/api';
 const MODEL = process.argv[2] || 'anthropic/claude-sonnet-5';
 const KEY = process.env.OPENROUTER_API_KEY;
 
-// Минимальный кешируемый префикс зависит от тарифа, и разница огромная.
-// Замерено эмпирически на этом же скрипте, через закреплённого провайдера
-// Anthropic:
+// The minimum cacheable prefix depends on the tier, and the gap is large.
+// Measured empirically with this same script, against a pinned Anthropic
+// provider:
 //
-//   Sonnet 5      кешируется от ~1024 токенов (1828 уже работали)
-//   Haiku 4.5     кешируется от ~4096 токенов (3663 — нет, 4879 — да)
+//   Sonnet 5     caches from ~1024 tokens (1828 already worked)
+//   Haiku 4.5    caches from ~4096 tokens (3663 did not, 4879 did)
 //
-// Ниже порога кеш не создаётся МОЛЧА: ни ошибки, ни предупреждения, просто
-// полная цена входа на каждом запросе. Отсюда неочевидный вывод, из-за которого
-// эта константа и живёт в коде: на префиксе короче 4096 токенов Haiku не
-// кешируется, и его вход по $1.00/1M выходит ДОРОЖЕ кешированного входа Sonnet
-// по $0.20/1M. Haiku экономит только на длинном стабильном префиксе.
+// Below the threshold the cache is not created SILENTLY: no error, no warning,
+// just full input price on every request. Hence the non-obvious conclusion this
+// constant exists to record: on a prefix shorter than 4096 tokens Haiku does not
+// cache, and its $1.00/1M input then costs MORE than Sonnet's $0.20/1M cached
+// input. Haiku only saves money on a long, stable prefix.
 //
-// Текст обязан быть побайтово одинаковым между запусками: ни даты, ни
-// случайных чисел, ни счётчиков. Это то самое правило, нарушение которого
-// канарейка и призвана ловить в реальных промптах.
+// The text must be byte-identical between runs: no dates, no random values, no
+// counters. That is exactly the rule this canary is meant to catch violations of
+// in real prompts.
 const MIN_CACHEABLE_TOKENS = { haiku: 4096, default: 1024 };
 
 function thresholdFor(model) {
@@ -45,13 +45,18 @@ function thresholdFor(model) {
 
 function stablePrefix() {
   const paragraph =
-    'Служебный контекст канарейки кеширования. Этот абзац существует только ' +
-    'затем, чтобы префикс запроса превысил минимальный кешируемый размер и ' +
-    'оставался при этом побайтово неизменным между запусками скрипта. ';
-  // ~76 токенов на повтор. 64 повтора (~4880) проходят даже порог Haiku.
-  // Один прогон канарейки стоит порядка полукопейки — дешевле, чем сутки
-  // незамеченного отключённого кеша.
-  return paragraph.repeat(64);
+    'Filler context for the caching canary. This paragraph exists only to push ' +
+    'the request prefix past the minimum cacheable size while staying ' +
+    'byte-identical between runs of the script. ';
+  // ~37 tokens per repeat, measured. 128 repeats (~4750) clear even the Haiku
+  // threshold with margin. Do not trim this number to "look tidy": at 64
+  // repeats the prefix lands at 2383 tokens and Haiku stops caching entirely —
+  // which is how this very canary caught the regression when the filler text
+  // was translated from Russian to English and got denser per repeat.
+  //
+  // One canary run costs a fraction of a cent, far less than a day of
+  // unnoticed cache misses.
+  return paragraph.repeat(128);
 }
 
 async function ask(question) {
@@ -64,17 +69,17 @@ async function ask(question) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 16,
-      // Закрепление провайдера. Вопреки распространённому заблуждению, модели
-      // Anthropic на OpenRouter раздаёт не один провайдер: у haiku-4.5 их
-      // восемь (Anthropic, Google, Azure, Bedrock в трёх вариантах), у
-      // sonnet-5 — девять. Без закрепления два соседних запроса уходят к разным
-      // провайдерам, и кеш префикса не переживает переезд. Проверено: без
-      // закрепления оба запроса ушли в Amazon Bedrock, с закреплением — в
-      // Anthropic.
+      // Provider pinning. Contrary to a common assumption, Anthropic models on
+      // OpenRouter are not served by a single provider: haiku-4.5 has eight
+      // endpoints (Anthropic, Google, Azure, Bedrock in three variants) and
+      // sonnet-5 has nine. Without pinning, two adjacent requests land on
+      // different providers and the prefix cache does not survive the move.
+      // Verified: unpinned, both requests went to Amazon Bedrock; pinned, both
+      // went to Anthropic.
       provider: { order: ['Anthropic'], allow_fallbacks: false },
-      // cache_control на системном блоке: кешируется всё до этой точки.
-      // Переменная часть (вопрос) идёт ПОСЛЕ неё — иначе каждый новый вопрос
-      // сдвигал бы префикс и обнулял кеш.
+      // cache_control on the system block: everything up to this point is
+      // cached. The variable part (the question) comes AFTER it — otherwise
+      // every new question would shift the prefix and void the cache.
       system: [
         {
           type: 'text',
@@ -91,18 +96,19 @@ async function ask(question) {
   return body;
 }
 
-// Стоимость запроса знает только провайдер: у него применены и скидка за
-// чтение кеша, и наценка за запись. Свой расчёт по прайсу здесь врал бы.
+// Only the provider knows what a request cost: the cache-read discount and the
+// cache-write surcharge are already applied on their side. Computing it here
+// from a price list would lie.
 async function costOf(id) {
-  // Статистика появляется заметно позже самого ответа, поэтому ждём с запасом:
-  // при пяти попытках по 1.5 с второй запрос стабильно оставался без цифр.
+  // Stats appear noticeably later than the response itself, so wait generously:
+  // with five attempts at 1.5s the second request consistently came back empty.
   for (let attempt = 0; attempt < 8; attempt++) {
     const res = await fetch(`${API}/v1/generation?id=${encodeURIComponent(id)}`, {
       headers: { Authorization: `Bearer ${KEY}` },
     });
     const body = await res.json();
     if (body.data) return body.data.total_cost;
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2000));
   }
   return null;
 }
@@ -110,67 +116,68 @@ async function costOf(id) {
 function report(label, usage, cost) {
   const write = usage.cache_creation_input_tokens ?? 0;
   const read = usage.cache_read_input_tokens ?? 0;
-  const money = cost === null ? 'нет данных' : `$${cost.toFixed(6)}`;
+  const money = cost === null ? 'no data' : `$${cost.toFixed(6)}`;
   console.log(
-    `${label}: вход ${usage.input_tokens}, запись в кеш ${write}, ` +
-      `чтение из кеша ${read}, стоимость ${money}`,
+    `${label}: input ${usage.input_tokens}, cache write ${write}, ` +
+      `cache read ${read}, cost ${money}`,
   );
   return read;
 }
 
 async function main() {
   if (!KEY) {
-    console.error('Нужен OPENROUTER_API_KEY.');
+    console.error('OPENROUTER_API_KEY is required.');
     process.exit(2);
   }
 
-  console.log(`Модель: ${MODEL}`);
+  console.log(`Model: ${MODEL}`);
 
-  // Вопросы разные, префикс один и тот же. Так проверяется именно кеш
-  // префикса, а не то, что провайдер вернул готовый ответ на повторный запрос.
-  const first = await ask('Ответь одним словом: раз.');
-  report('Запрос 1', first.usage, await costOf(first.id));
+  // Different questions, identical prefix. This tests the prefix cache
+  // specifically, rather than a provider replaying a stored answer to a
+  // repeated request.
+  const first = await ask('Answer with one word: one.');
+  report('Request 1', first.usage, await costOf(first.id));
   const written =
     (first.usage.cache_creation_input_tokens ?? 0) +
     (first.usage.cache_read_input_tokens ?? 0);
 
-  const second = await ask('Ответь одним словом: два.');
-  const secondRead = report('Запрос 2', second.usage, await costOf(second.id));
+  const second = await ask('Answer with one word: two.');
+  const secondRead = report('Request 2', second.usage, await costOf(second.id));
 
   if (secondRead > 0) {
-    console.log('\nКеш работает: второй запрос прочитал префикс из кеша.');
+    console.log('\nCaching works: request 2 read the prefix from cache.');
     return;
   }
 
-  // Два разных диагноза, и путать их нельзя. Кеш не создался — проблема в
-  // запросе (порог, состав префикса). Кеш создался, но не прочитался — проблема
-  // в маршрутизации или во времени жизни.
+  // Two distinct diagnoses, and they must not be conflated. Cache never
+  // created — the problem is in the request (threshold, prefix contents).
+  // Cache created but not read — the problem is routing or lifetime.
   if (written === 0) {
     console.error(
-      '\nКеш НЕ создан: первый запрос не записал в кеш ни одного токена,\n' +
-        'весь префикс ушёл как обычный вход по полной цене.\n' +
-        `Порог для этой модели — около ${thresholdFor(MODEL)} токенов ` +
-        `(у Haiku он вчетверо выше, чем у Sonnet и Opus).\n` +
-        'Что проверить:\n' +
-        '  — префикс короче минимального кешируемого размера для этой модели;\n' +
-        '  — переменная часть стоит ДО cache_control, а не после;\n' +
-        '  — cache_control вообще не доехал до провайдера.',
+      '\nCache NOT created: request 1 wrote zero tokens to cache, so the whole\n' +
+        'prefix was billed as ordinary input at full price.\n' +
+        `The threshold for this model is around ${thresholdFor(MODEL)} tokens\n` +
+        '(Haiku sits four times higher than Sonnet and Opus).\n' +
+        'What to check:\n' +
+        '  - the prefix is shorter than this model’s minimum cacheable size;\n' +
+        '  - the variable part sits BEFORE cache_control instead of after it;\n' +
+        '  - cache_control never reached the provider at all.',
     );
   } else {
     console.error(
-      '\nКеш создан, но НЕ прочитан: префикс записался и пропал.\n' +
-        'Значит история всё равно пересылается по полной цене. Что проверить:\n' +
-        '  — в префиксе есть меняющаяся часть (дата, идентификатор, счётчик);\n' +
-        '  — между запросами прошло больше срока жизни кеша (по умолчанию 5 минут);\n' +
-        '  — запросы ушли к разным провайдерам. Для моделей Anthropic это\n' +
-        '    невозможно (провайдер один), но для открытых моделей — обычное дело:\n' +
-        '    закрепите провайдера через provider.order и allow_fallbacks: false.',
+      '\nCache created but NOT read: the prefix was written and then lost.\n' +
+        'History is still being resent at full price. What to check:\n' +
+        '  - the prefix contains something variable (a date, an id, a counter);\n' +
+        '  - more than the cache lifetime passed between requests (5 min default);\n' +
+        '  - the requests went to different providers. Pin one with\n' +
+        '    provider.order and allow_fallbacks: false — this happens even to\n' +
+        '    Anthropic models, which have up to nine endpoints on OpenRouter.',
     );
   }
   process.exit(1);
 }
 
 main().catch((err) => {
-  console.error(`Канарейка не смогла выполнить проверку: ${err.message}`);
+  console.error(`The canary could not complete the check: ${err.message}`);
   process.exit(2);
 });

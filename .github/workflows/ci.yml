@@ -1,17 +1,17 @@
 name: CI
 
-# Быстрый гейт качества. Job-ы добавляются вместе с кодом, который они
-# проверяют: `frontend` появится с приложением, `gateway` — с compose-стеком.
-# Ссылаться на ещё не существующие пути нельзя, иначе первый же прогон красный
-# и авто-цикл починки начинает работу с ложной цели.
+# Fast quality gate. Jobs are added alongside the code they check: `frontend`
+# arrives with the app, `gateway` with the compose stack. Referencing paths that
+# do not exist yet would make the very first run red, and the auto-fix loop would
+# start work on a false target.
 #
-# Отдельного триггера `push` нет намеренно: пуши в main пойдут через сборку,
-# которая вызовет этот workflow через `workflow_call`. Добавить сюда `push` —
-# значит прогонять гейт дважды на каждом мерже.
+# There is deliberately no `push` trigger: pushes to main will go through the
+# build workflow, which calls this one via `workflow_call`. Adding `push` here
+# would run the gate twice on every merge.
 #
-# При этом standalone-прогон на pull_request обязателен и нагружен смыслом:
-# workflow, вызванный через `workflow_call`, не создаёт своего run и не
-# порождает событие `workflow_run`, на которое смотрит авто-цикл починки.
+# The standalone run on pull_request is required and load-bearing: a workflow
+# invoked through `workflow_call` does not produce its own run, and therefore
+# emits no `workflow_run` event — which is what the auto-fix loop listens for.
 on:
   pull_request:
   workflow_call:
@@ -21,20 +21,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Стоит первым: репозиторий публичный, и узнать об утёкшем ключе после того,
-  # как отработали сборки, — значит узнать слишком поздно. Job дешёвый: один
-  # checkout и grep по индексу.
+  # First job on purpose: the repository is public, and learning about a leaked
+  # key after the builds have finished means learning too late. The job is cheap
+  # — one checkout and a grep over the index.
   secrets:
     name: secrets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Секреты в индексе
+      - name: Secrets in the index
         run: ./scripts/check-secrets.sh
 
-      # Внутри этого job, а не отдельным: свой job — это ещё один раннер и ещё
-      # минута на его подъём ради секунды работы линтера. shellcheck
-      # предустановлен в образе ubuntu-latest, ставить не нужно.
+      # Inside this job rather than its own: a separate job means another runner
+      # and another minute spent starting it for a second of linting. shellcheck
+      # is preinstalled on the ubuntu-latest image, so there is nothing to set up.
       - name: Shellcheck
         run: shellcheck scripts/*.sh
