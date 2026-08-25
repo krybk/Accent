@@ -89,8 +89,11 @@ Future<void> main() async {
       Uint8List.fromList(signing.toUint8List()),
       'accent-probe',
     );
-    step('generate an ed25519 key', true,
-        'public ${keyPair.publicKey.length} B, private ${keyPair.privateKey.length} B');
+    step(
+      'generate an ed25519 key',
+      true,
+      'public ${keyPair.publicKey.length} B, private ${keyPair.privateKey.length} B',
+    );
   } catch (e) {
     step('generate an ed25519 key', false, '$e');
     exit(1);
@@ -101,7 +104,8 @@ Future<void> main() async {
   try {
     final pem = keyPair.toPem();
     final restored = SSHKeyPair.fromPem(pem).first as OpenSSHEd25519KeyPair;
-    final same = restored.privateKey.toString() == keyPair.privateKey.toString();
+    final same =
+        restored.privateKey.toString() == keyPair.privateKey.toString();
     step('export the key to PEM and read it back', same);
   } catch (e) {
     step('export the key to PEM and read it back', false, '$e');
@@ -112,7 +116,8 @@ Future<void> main() async {
     final sftp = await byPassword.sftp();
     final file = await sftp.open(
       '/home/$user/probe-upload.txt',
-      mode: SftpFileOpenMode.create |
+      mode:
+          SftpFileOpenMode.create |
           SftpFileOpenMode.write |
           SftpFileOpenMode.truncate,
     );
@@ -120,7 +125,9 @@ Future<void> main() async {
       Stream.value(Uint8List.fromList(utf8.encode('accent bootstrap probe\n'))),
     );
     await file.close();
-    final back = utf8.decode(await byPassword.run('cat /home/$user/probe-upload.txt'));
+    final back = utf8.decode(
+      await byPassword.run('cat /home/$user/probe-upload.txt'),
+    );
     step('upload a file over SFTP', back.trim() == 'accent bootstrap probe');
   } catch (e) {
     step('upload a file over SFTP', false, '$e');
@@ -157,8 +164,10 @@ Future<void> main() async {
     step('reconnect using the key alone', false, '$e');
   }
 
-  stdout.writeln(failures == 0
-      ? '\nAll steps passed: dartssh2 covers the bootstrap chain.'
-      : '\n$failures step(s) failed: dartssh2 does not cover the chain.');
+  stdout.writeln(
+    failures == 0
+        ? '\nAll steps passed: dartssh2 covers the bootstrap chain.'
+        : '\n$failures step(s) failed: dartssh2 does not cover the chain.',
+  );
   exit(failures == 0 ? 0 : 1);
 }

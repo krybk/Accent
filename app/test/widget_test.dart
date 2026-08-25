@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows the empty state when no servers are configured',
-      (tester) async {
+  testWidgets('shows the empty state when no servers are configured', (
+    tester,
+  ) async {
     await tester.pumpWidget(const AccentApp());
 
     expect(find.text('Servers'), findsOneWidget);
@@ -12,8 +13,9 @@ void main() {
     expect(find.byIcon(Icons.add), findsOneWidget);
   });
 
-  testWidgets('the add button says so rather than opening a half-built form',
-      (tester) async {
+  testWidgets('the add button says so rather than opening a half-built form', (
+    tester,
+  ) async {
     await tester.pumpWidget(const AccentApp());
 
     await tester.tap(find.byIcon(Icons.add));
