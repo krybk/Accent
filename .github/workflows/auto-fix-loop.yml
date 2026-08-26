@@ -67,6 +67,9 @@ jobs:
               await github.rest.issues.createComment({
                 owner: upOwner, repo: upRepo, issue_number: Number(upNumber),
                 body: [
+                  '<!-- aimgr-bot -->',
+                  '🤖 **[aimgr]**',
+                  '',
                   `Done in \`${owner}/${repo}\`: ${pr.html_url} merged.`,
                   '',
                   `Closed ${owner}/${repo}#${number} — *${issue.title}*.`,
