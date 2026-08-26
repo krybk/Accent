@@ -38,6 +38,11 @@ jobs:
       - name: Secrets in the index
         run: ./scripts/check-secrets.sh
 
+      - name: Workflow YAML and embedded scripts are valid
+        run: |
+          pip install --quiet pyyaml
+          python3 scripts/check-workflows.py
+
       # Inside this job rather than its own: a separate job means another runner
       # and another minute spent starting it for a second of linting. shellcheck
       # is preinstalled on the ubuntu-latest image, so there is nothing to set up.
