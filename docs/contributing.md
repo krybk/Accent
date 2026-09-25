@@ -106,25 +106,27 @@ could take root, update `.gitignore` and that script together.
 
 ## Models and money
 
-Model access goes through OpenRouter (`ANTHROPIC_BASE_URL`). What follows is not
-general advice but measurements taken on this project. They change which tier you
-pick, which is why they live here rather than in someone's memory.
+Model access is direct, with no intermediary. CI's Claude sessions
+(`claude.yml`) authenticate with the owner's Claude subscription token
+(`CLAUDE_CODE_OAUTH_TOKEN`); the gateway on a user's server calls the Anthropic
+API with that server's own `ANTHROPIC_API_KEY`. OpenRouter was removed on
+2026-09-25. What follows is not general advice but measurements taken on this
+project. They change which tier you pick, which is why they live here rather
+than in someone's memory.
 
-**Exact model IDs, never aliases.** `~anthropic/claude-opus-latest` will one day
-silently move to a pricier model, and a version change should be a visible
-commit. Current IDs: `anthropic/claude-opus-5`, `anthropic/claude-sonnet-5`,
-`anthropic/claude-haiku-4.5`. There is **no** `claude-haiku-5` — it was set in
-the environment once and failed every cheap-tier call with `400 not a valid model
-ID`, pushing that work onto more expensive tiers.
+**Exact model IDs, never aliases.** An alias will one day silently move to a
+pricier model, and a version change should be a visible commit. Current IDs in
+CI: `claude-opus-5-5` and `claude-sonnet-5` — Haiku is retired there, so
+Sonnet 5 is the floor, including for the CLI's own cheap tier. There is **no**
+`claude-haiku-5` — it was set in the environment once and failed every
+cheap-tier call with `400 not a valid model ID`, pushing that work onto more
+expensive tiers.
 
-**Pin the provider.** Anthropic models on OpenRouter are not served by one
-provider: `haiku-4.5` has eight endpoints, `sonnet-5` has nine (Anthropic,
-Google, Azure, Bedrock). Without pinning, adjacent requests land on different
-providers and the prefix cache does not survive the move. On every request:
-
-```json
-"provider": { "order": ["Anthropic"], "allow_fallbacks": false }
-```
+**No provider pinning any more.** Through OpenRouter, Anthropic models were
+served by up to nine endpoints and requests had to be pinned to Anthropic or the
+prefix cache did not survive the move between providers. A direct connection has
+one provider, so there is nothing to pin. The measurement stays in the
+[journal](engineering-journal.md).
 
 **Haiku is not always cheaper.** The minimum cacheable prefix, measured
 empirically: Sonnet 5 caches from ~1024 tokens, Haiku 4.5 only from ~4096. Below
@@ -179,7 +181,7 @@ direction of failure.
 
 | Secret | Used by | Purpose |
 | --- | --- | --- |
-| `OPENROUTER_API_KEY` | `claude.yml` | model access |
+| `CLAUDE_CODE_OAUTH_TOKEN` | `claude.yml` | model access: the owner's Claude subscription token (`claude setup-token`), used by the action and by the one-shot triage call. Personal, so only allowed authors can spend it and fork pull requests never reach it |
 | `DEEPSEEK_API_KEY` | `deepseek.yml` | the second model's key. Absent, the worker says so in a comment on the Issue and ends green — nothing watches its conclusion, so failing would tell nobody |
 | `AUTOMATION_TOKEN` | `claude.yml`, `auto-fix-loop.yml`, `deepseek.yml` | a PAT, so PRs it opens actually start CI. It must belong to a login in `ALLOWED_AUTHORS`, or the retry comment it posts will be refused by the author gate |
 | `ANDROID_KEYSTORE_BASE64` | `release.yml` | release signing |

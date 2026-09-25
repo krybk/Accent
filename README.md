@@ -69,7 +69,8 @@ Worth knowing before relying on it:
   [`claude.yml`](.github/workflows/claude.yml) can start a session. Anyone
   else's Issue costs nothing and is ignored, which matters because this
   repository is public and a session has write access and spends money. Pull
-  requests from forks are left to a human for the same reason.
+  requests from forks are left to a human for the same reason: `claude.yml`
+  refuses to start a session on one, whoever asks.
 - **A pull request from an `auto/` branch merges unread once CI is green** —
   including changes to the workflows themselves. That is deliberate: the trigger
   wiring lives there, and a loop that cannot repair its own plumbing needs a
@@ -79,8 +80,9 @@ Worth knowing before relying on it:
 - One retry, then the Issue gets `needs-human`. That label is the signal that
   automation gave up; a later green run will not clear it.
 - Two secrets carry the whole thing: `AUTOMATION_TOKEN`, a PAT with `repo` and
-  `workflow` scope, and `OPENROUTER_API_KEY`. Both are checked before a session
-  starts so a missing one names itself. If the PAT expires the loop breaks
+  `workflow` scope, and `CLAUDE_CODE_OAUTH_TOKEN`, the owner's Claude
+  subscription token — CI talks to Claude directly. Both are checked before a
+  session starts so a missing one names itself. If the PAT expires the loop breaks
   quietly — Issues keep being filed and nothing answers them.
 
 Diagnosed failure causes live in
