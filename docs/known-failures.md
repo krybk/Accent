@@ -16,14 +16,16 @@ operations (background summaries, subtasks, page fetches) rather than on the mai
 answer.
 
 **Cause.** A non-existent model ID in the environment or in a workflow. We hit
-this with `anthropic/claude-haiku-5` — no such family exists on OpenRouter.
+this with `anthropic/claude-haiku-5` (then through OpenRouter, removed on
+2026-09-25) — no such model family exists.
 
-**Fix.** Check the ID against the live list: `curl -s
-https://openrouter.ai/api/v1/models | jq -r '.data[].id' | grep anthropic`.
-Current: `anthropic/claude-opus-5`, `anthropic/claude-sonnet-5`,
-`anthropic/claude-haiku-4.5`.
+**Fix.** Check the ID against Anthropic's model list
+(https://docs.claude.com/en/docs/about-claude/models), or with an API key:
+`curl -s https://api.anthropic.com/v1/models -H "x-api-key: $ANTHROPIC_API_KEY"
+-H "anthropic-version: 2023-06-01" | jq -r '.data[].id'`. Current in CI:
+`claude-opus-5-5`, `claude-sonnet-5`.
 
-**Do not revisit:** aliases of the form `~anthropic/claude-haiku-latest`. They
+**Do not revisit:** aliases that float to the latest model of a family. They
 are valid, but they silently move to a different model, which makes a price
 increase invisible.
 
@@ -202,15 +204,16 @@ comment saying only that an error occurred. The job log's real line is:
 CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation ... is required when
 using direct Anthropic API.`
 
-**Cause.** A model key that is not set. The action maps its
-`anthropic_api_key` input to `ANTHROPIC_API_KEY`, so an empty
-`secrets.OPENROUTER_API_KEY` fails validation before any model call. The message
-is misleading twice over: it names three alternatives that are irrelevant here —
-we authenticate to OpenRouter, not to Anthropic directly — and it never says
-which secret is empty.
+**Cause.** A model credential that is not set. The action maps its
+`claude_code_oauth_token` input to `CLAUDE_CODE_OAUTH_TOKEN`, so an empty
+`secrets.CLAUDE_CODE_OAUTH_TOKEN` fails validation before any model call, and
+the message never says which secret is empty. (First diagnosed when the model
+key was an OpenRouter key passed as `anthropic_api_key`; OpenRouter was removed
+on 2026-09-25.)
 
-**Fix.** Set `OPENROUTER_API_KEY`. A step now checks it and `AUTOMATION_TOKEN`
-up front and names whichever is missing.
+**Fix.** Set `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the owner's
+machine). A step now checks it and `AUTOMATION_TOKEN` up front and names
+whichever is missing.
 
 **Reading a log without admin rights:** the check-run annotations are public on a
 public repository, and they carry the error line. `curl -s

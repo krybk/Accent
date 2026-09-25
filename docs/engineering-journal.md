@@ -325,3 +325,26 @@ Two consequences for tests, both of which apply to any Flutter form here:
 - `tap` does require visibility, so a submit button below the fold needs
   `ensureVisible` first. That is a test-harness detail, not a hint about the
   widget: the default test surface is 800×600, smaller than most phones.
+
+## 2026-09-25. CI talks to Claude directly; OpenRouter removed
+
+`claude.yml` no longer goes through OpenRouter. The action authenticates with
+the owner's Claude subscription token (`claude_code_oauth_token`, secret
+`CLAUDE_CODE_OAUTH_TOKEN`), and model IDs are Anthropic's own
+(`claude-sonnet-5`, `claude-opus-5-5`). Haiku is retired in CI; Sonnet 5 is the
+floor, including for the CLI's cheap tier.
+
+One consequence is not obvious: a subscription OAuth token authenticates Claude
+Code, not the raw Messages API. The triage step used to `curl` the Messages
+endpoint; with this token that call cannot work, so it is now a one-shot
+`claude -p` with no tools and one turn. Its fail-safe is unchanged — anything
+unparseable stays on Sonnet.
+
+Because the token is personal and the repository public, the gate in front of
+it now checks three things, not one: the named login, GitHub's
+`author_association` (OWNER, MEMBER or COLLABORATOR), and that a pull request's
+head is not a fork. The last one matters for `issue_comment`, which runs with
+secrets even on a fork's pull request.
+
+The provider-pinning measurements above stay as history: they were true of
+OpenRouter and do not apply to a direct connection, which has one provider.

@@ -1,4 +1,4 @@
-name: Claude Code Action (via OpenRouter)
+name: Claude Code Action
 
 # `labeled` is deliberately absent: it fires on every label our own workflows
 # attach, which would re-trigger Claude on issues it has already handled.
@@ -95,12 +95,27 @@ jobs:
             ${{ github.event.comment.user.login
               || github.event.issue.user.login
               || github.event.pull_request.user.login }}
+          # The same author's relationship to the repository, also computed by
+          # GitHub. Checked in addition to ALLOWED_AUTHORS, never instead of it.
+          ASSOCIATION: >-
+            ${{ github.event.comment.author_association
+              || github.event.issue.author_association
+              || github.event.pull_request.author_association }}
+          # For the fork check below. ISSUE_PR_URL is non-empty only when an
+          # issue_comment was written on a pull request; PR_HEAD_REPO is set on
+          # the pull_request and pull_request_review_comment events.
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_PR_URL: ${{ github.event.issue.pull_request.url }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          GH_TOKEN: ${{ github.token }}
           # This repository is PUBLIC. Any GitHub user can open an issue saying
           # "@claude ...", and this job runs in the base-repo context with write
-          # permissions, a PAT, and a provider key. Without this list a stranger
-          # could have Claude commit on our behalf, or simply burn the model
-          # budget by filing issues. The private repository this workflow came
-          # from did not need the check; here it is load-bearing.
+          # permissions, a PAT, and the owner's personal Claude subscription
+          # token. Without this list a stranger could have Claude commit on our
+          # behalf, or simply burn the owner's subscription by filing issues.
+          # The private repository this workflow came from did not need the
+          # check; here it is load-bearing.
           #
           # Named logins rather than author_association: OWNER/MEMBER/
           # COLLABORATOR widens automatically as people are added to the
@@ -112,11 +127,11 @@ jobs:
           # belong to a login on this list — otherwise the loop posts a comment
           # that this gate then refuses, and CI failures stop being picked up.
           ALLOWED_AUTHORS: "krybk"
-          # Exact model IDs, never OpenRouter's ~family-latest aliases: an alias
-          # will one day resolve to a pricier model with nothing in the logs
-          # changing. A version change belongs in a commit.
-          OPUS_MODEL: "anthropic/claude-opus-5"
-          SONNET_MODEL: "anthropic/claude-sonnet-5"
+          # Exact model IDs, never aliases: an alias will one day resolve to a
+          # pricier model with nothing in the logs changing. A version change
+          # belongs in a commit.
+          OPUS_MODEL: "claude-opus-5-5"
+          SONNET_MODEL: "claude-sonnet-5"
           # Marker that our own workflows put in everything they write. The
           # retry comment in auto-fix-loop.yml has to say "@claude" to wake this
           # workflow at all, so without this marker the loop would escalate
@@ -160,6 +175,42 @@ jobs:
             exit 0
           fi
 
+          # Defence in depth behind the named list: the author must also be the
+          # owner, an org member or a collaborator as GitHub sees it. Fails
+          # closed on an empty or unexpected value.
+          case "$ASSOCIATION" in
+            OWNER|MEMBER|COLLABORATOR) ;;
+            *)
+              echo "Author association '${ASSOCIATION:-<empty>}' is not OWNER, MEMBER or COLLABORATOR — not running."
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+          esac
+
+          # A pull request from a fork is attacker-controlled code. An
+          # issue_comment on one runs here with every secret, and the action
+          # would check that code out and let the session run tools over it —
+          # so an allowed author's "@claude" on a fork PR must not start a
+          # session. pull_request and pull_request_review_comment from forks
+          # get no secrets from GitHub anyway; they are checked too so the
+          # refusal is explicit. A failed lookup counts as a fork.
+          head_repo=
+          if [[ "$EVENT_NAME" == "issue_comment" ]]; then
+            if [[ -n "$ISSUE_PR_URL" ]]; then
+              head_repo=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" --jq '.head.repo.full_name // ""' 2>/dev/null || true)
+              [[ -z "$head_repo" ]] && head_repo="<unknown>"
+            fi
+          elif [[ "$EVENT_NAME" == "pull_request" || "$EVENT_NAME" == "pull_request_review_comment" ]]; then
+            head_repo="${PR_HEAD_REPO:-<unknown>}"
+          fi
+          if [[ -n "$head_repo" && "$head_repo" != "$REPO" ]]; then
+            echo "Pull request head is '$head_repo', not '$REPO' — a fork is left to a human, not running."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "model=$SONNET_MODEL" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [[ "$body" != *"@claude"* ]]; then
             echo "No @claude mention — not running."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
@@ -198,40 +249,44 @@ jobs:
       # Both secrets checked here, after the author gate so a stranger's issue
       # still costs nothing, and before the action so the failure names itself.
       #
-      # Without this, a missing model key surfaced as "Claude encountered an
-      # error" on the Issue and, in the log, as the action's own env-validation
-      # message listing three alternatives that mean nothing in this setup — we
-      # authenticate to OpenRouter, not to the Anthropic API directly. The
-      # useful information, which secret is empty, was the one thing absent.
+      # Without this, a missing model credential surfaced as "Claude
+      # encountered an error" on the Issue and, in the log, as the action's own
+      # env-validation message listing alternatives without saying which secret
+      # is empty — the one useful piece of information.
       - name: The secrets this job needs are present
         if: steps.check.outputs.should_run == 'true'
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
         run: |
           missing=
-          [ -z "$OPENROUTER_API_KEY" ] && missing="$missing OPENROUTER_API_KEY"
+          [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] && missing="$missing CLAUDE_CODE_OAUTH_TOKEN"
           [ -z "$AUTOMATION_TOKEN" ] && missing="$missing AUTOMATION_TOKEN"
           if [ -n "$missing" ]; then
             echo "::error::Not set in this repository:$missing." \
                  "Add them under Settings -> Secrets and variables -> Actions." \
-                 "OPENROUTER_API_KEY is the model key, passed as anthropic_api_key" \
-                 "and as ANTHROPIC_AUTH_TOKEN; AUTOMATION_TOKEN is a PAT with" \
-                 "'repo' and 'workflow' scope, needed so the PRs this job opens" \
-                 "start CI and may touch .github/workflows."
+                 "CLAUDE_CODE_OAUTH_TOKEN is the owner's Claude subscription token" \
+                 "(from 'claude setup-token'), passed as claude_code_oauth_token;" \
+                 "AUTOMATION_TOKEN is a PAT with 'repo' and 'workflow' scope," \
+                 "needed so the PRs this job opens start CI and may touch" \
+                 ".github/workflows."
             exit 1
           fi
 
-      # The action needs a checkout to run the project's tools.
-      # One Haiku call, a few hundred tokens, to decide whether this needs Opus.
+      # One Sonnet call, a few hundred tokens, to decide whether this needs Opus.
       #
       # The point is the asymmetry: reading a request is cheap and answering it
-      # is not, so the decision belongs on the cheapest model that can make it.
+      # is not, so the decision belongs on the cheapest model that can make it
+      # (Sonnet 5 — Haiku is retired in this CI).
       # What it must not do is fail upward — a classifier that errs towards Opus
       # costs more than no classifier at all, so anything unexpected here leaves
       # Sonnet in place. The explicit `[opus]` marker exists for when a human
       # disagrees with the outcome.
-      - name: Ask Haiku whether this needs Opus
+      #
+      # Transport is a one-shot `claude -p` rather than a curl to the Messages
+      # API: the subscription OAuth token authenticates Claude Code, not the raw
+      # API. No tools, one turn, so the body is only ever read, never acted on.
+      - name: Ask Sonnet whether this needs Opus
         id: triage
         if: steps.check.outputs.triage == 'true'
         # A triage failure must never stop the session. If this step dies, the
@@ -240,7 +295,7 @@ jobs:
         continue-on-error: true
         env:
           BODY: ${{ github.event.issue.body || github.event.comment.body || github.event.pull_request.body }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           rubric='Answer with exactly one word, OPUS or SONNET, and nothing else.
           Answer OPUS only if the request requires designing an architecture,
@@ -251,36 +306,36 @@ jobs:
           tests, or writing documentation.
           When unsure, answer SONNET.'
 
-          # The body is passed as data through jq, never interpolated into the
-          # JSON by hand: a quote or a newline in an Issue would otherwise
-          # produce an invalid request, and this step failing must not stop the
-          # session.
-          payload=$(jq -n --arg rubric "$rubric" --arg body "$BODY" '{
-            model: "anthropic/claude-haiku-4.5",
-            max_tokens: 4,
-            system: $rubric,
-            messages: [{role: "user", content: $body}]
-          }')
+          # Anything going wrong here ends in the Sonnet branch below: an
+          # install failure, a timeout and an unparseable answer all leave
+          # $verdict empty.
+          npm i -g --silent @anthropic-ai/claude-code >/dev/null 2>&1 || true
 
-          verdict=$(curl -s --max-time 30 "https://openrouter.ai/api/v1/messages" \
-            -H "Authorization: Bearer $OPENROUTER_API_KEY" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d "$payload" | jq -r '.content[0].text // ""' \
+          # The body goes in on stdin as data, never into argv or the system
+          # prompt, so a quote or a newline in an Issue cannot change the call.
+          verdict=$(printf '%s' "$BODY" | timeout 120 claude -p \
+              --model claude-sonnet-5 \
+              --max-turns 1 \
+              --tools "" \
+              --strict-mcp-config \
+              --system-prompt "$rubric" \
+              --output-format json 2>/dev/null \
+            | jq -r '.result // ""' 2>/dev/null \
             | tr -d '[:space:]' | tr '[:lower:]' '[:upper:]' || true)
 
           # Substring rather than equality: a trailing full stop would otherwise
           # send every hard task to Sonnet and the classifier would look like it
           # was working. Anything that is not recognisably OPUS stays cheap.
-          echo "Haiku says: ${verdict:-<nothing>}"
+          echo "Sonnet says: ${verdict:-<nothing>}"
           if [ "${verdict#*OPUS}" != "$verdict" ]; then
-            echo "model=anthropic/claude-opus-5" >> "$GITHUB_OUTPUT"
+            echo "model=claude-opus-5-5" >> "$GITHUB_OUTPUT"
             echo "Raised to Opus."
           else
-            echo "model=anthropic/claude-sonnet-5" >> "$GITHUB_OUTPUT"
+            echo "model=claude-sonnet-5" >> "$GITHUB_OUTPUT"
             echo "Staying on Sonnet."
           fi
 
+      # The action needs a checkout to run the project's tools.
       - name: Checkout
         if: steps.check.outputs.should_run == 'true'
         uses: actions/checkout@v5
@@ -298,7 +353,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Run Claude Code Action via OpenRouter
+      - name: Run Claude Code Action
         id: claude
         if: steps.check.outputs.should_run == 'true'
         uses: anthropics/claude-code-action@v1
@@ -306,11 +361,10 @@ jobs:
           # A PAT rather than GITHUB_TOKEN, so the PRs Claude opens actually
           # start CI instead of waiting for "Approve workflows to run".
           github_token: ${{ secrets.AUTOMATION_TOKEN }}
-          # Required: the action validates its environment before starting and
-          # does not accept ANTHROPIC_AUTH_TOKEN alone. Passing the OpenRouter
-          # key both here and as ANTHROPIC_AUTH_TOKEN below is the setup
-          # OpenRouter documents; the same key in either header authenticates.
-          anthropic_api_key: ${{ secrets.OPENROUTER_API_KEY }}
+          # The owner's Claude subscription token (`claude setup-token`), talking
+          # to Claude directly. Personal, which is why the author, association
+          # and fork checks in the first step are load-bearing.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # Must stay in sync with AUTOMATED_PREFIX in the label job above: that
           # job labels by this prefix, and auto-merge in auto-fix-loop.yml only
           # merges what carries the label. A mismatch stops auto-merge silently.
@@ -340,16 +394,10 @@ jobs:
           # rather than GITHUB_TOKEN for the same reason as everywhere else, so
           # the PR starts CI instead of waiting for approval.
           GH_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
-          # OpenRouter serves an Anthropic Messages-compatible endpoint at
-          # /api/v1/messages, so this base URL is correct as written.
-          ANTHROPIC_BASE_URL: "https://openrouter.ai/api"
-          # OpenRouter authenticates with `Authorization: Bearer`, which is what
-          # ANTHROPIC_AUTH_TOKEN produces.
-          ANTHROPIC_AUTH_TOKEN: ${{ secrets.OPENROUTER_API_KEY }}
           # Tiers the CLI picks on its own (subagents, background summaries).
-          # claude-haiku-5 does not exist: it was set here once and failed every
-          # cheap-tier call with 400, silently pushing that work onto pricier
-          # tiers. Exact IDs only.
-          ANTHROPIC_DEFAULT_OPUS_MODEL: "anthropic/claude-opus-5"
-          ANTHROPIC_DEFAULT_SONNET_MODEL: "anthropic/claude-sonnet-5"
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: "anthropic/claude-haiku-4.5"
+          # Exact IDs only: claude-haiku-5 does not exist, and setting it once
+          # failed every cheap-tier call with 400. Haiku is retired in this CI,
+          # so the cheap tier is Sonnet 5 as well.
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-5-5"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-5"
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-sonnet-5"
