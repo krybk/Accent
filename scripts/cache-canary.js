@@ -10,18 +10,17 @@
 //
 // What it does. Two requests sharing a prefix. The first must WRITE the cache,
 // the second must READ it. If the second reads zero, caching is not working and
-// this script fails. Both costs come from /api/v1/generation rather than from
-// our own arithmetic, so what you see is what the provider actually charged.
+// this script fails. It talks to the Anthropic API directly, the same way the
+// gateway does, and reports the token counts Anthropic returns in `usage`.
 //
-// Usage: OPENROUTER_API_KEY=... node scripts/cache-canary.js [model]
+// Usage: ANTHROPIC_API_KEY=... node scripts/cache-canary.js [model]
 
-const API = 'https://openrouter.ai/api';
-const MODEL = process.argv[2] || 'anthropic/claude-sonnet-5';
-const KEY = process.env.OPENROUTER_API_KEY;
+const API = 'https://api.anthropic.com';
+const MODEL = process.argv[2] || 'claude-sonnet-5';
+const KEY = process.env.ANTHROPIC_API_KEY;
 
 // The minimum cacheable prefix depends on the tier, and the gap is large.
-// Measured empirically with this same script, against a pinned Anthropic
-// provider:
+// Measured empirically with this same script, against Anthropic:
 //
 //   Sonnet 5     caches from ~1024 tokens (1828 already worked)
 //   Haiku 4.5    caches from ~4096 tokens (3663 did not, 4879 did)
@@ -63,20 +62,13 @@ async function ask(question) {
   const res = await fetch(`${API}/v1/messages`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${KEY}`,
+      'x-api-key': KEY,
+      'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 16,
-      // Provider pinning. Contrary to a common assumption, Anthropic models on
-      // OpenRouter are not served by a single provider: haiku-4.5 has eight
-      // endpoints (Anthropic, Google, Azure, Bedrock in three variants) and
-      // sonnet-5 has nine. Without pinning, two adjacent requests land on
-      // different providers and the prefix cache does not survive the move.
-      // Verified: unpinned, both requests went to Amazon Bedrock; pinned, both
-      // went to Anthropic.
-      provider: { order: ['Anthropic'], allow_fallbacks: false },
       // cache_control on the system block: everything up to this point is
       // cached. The variable part (the question) comes AFTER it — otherwise
       // every new question would shift the prefix and void the cache.
@@ -96,53 +88,38 @@ async function ask(question) {
   return body;
 }
 
-// Only the provider knows what a request cost: the cache-read discount and the
-// cache-write surcharge are already applied on their side. Computing it here
-// from a price list would lie.
-async function costOf(id) {
-  // Stats appear noticeably later than the response itself, so wait generously:
-  // with five attempts at 1.5s the second request consistently came back empty.
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const res = await fetch(`${API}/v1/generation?id=${encodeURIComponent(id)}`, {
-      headers: { Authorization: `Bearer ${KEY}` },
-    });
-    const body = await res.json();
-    if (body.data) return body.data.total_cost;
-    await new Promise((r) => setTimeout(r, 2000));
-  }
-  return null;
-}
-
-function report(label, usage, cost) {
+// Token counts only, no dollar figure. The Anthropic API has no per-request
+// cost endpoint, and computing one here from a price list would present an
+// estimate as what was charged. The counts are what decides pass or fail.
+function report(label, usage) {
   const write = usage.cache_creation_input_tokens ?? 0;
   const read = usage.cache_read_input_tokens ?? 0;
-  const money = cost === null ? 'no data' : `$${cost.toFixed(6)}`;
   console.log(
     `${label}: input ${usage.input_tokens}, cache write ${write}, ` +
-      `cache read ${read}, cost ${money}`,
+      `cache read ${read}`,
   );
   return read;
 }
 
 async function main() {
   if (!KEY) {
-    console.error('OPENROUTER_API_KEY is required.');
+    console.error('ANTHROPIC_API_KEY is required.');
     process.exit(2);
   }
 
   console.log(`Model: ${MODEL}`);
 
   // Different questions, identical prefix. This tests the prefix cache
-  // specifically, rather than a provider replaying a stored answer to a
-  // repeated request.
+  // specifically, rather than a stored answer being replayed to a repeated
+  // request.
   const first = await ask('Answer with one word: one.');
-  report('Request 1', first.usage, await costOf(first.id));
+  report('Request 1', first.usage);
   const written =
     (first.usage.cache_creation_input_tokens ?? 0) +
     (first.usage.cache_read_input_tokens ?? 0);
 
   const second = await ask('Answer with one word: two.');
-  const secondRead = report('Request 2', second.usage, await costOf(second.id));
+  const secondRead = report('Request 2', second.usage);
 
   if (secondRead > 0) {
     console.log('\nCaching works: request 2 read the prefix from cache.');
@@ -151,7 +128,7 @@ async function main() {
 
   // Two distinct diagnoses, and they must not be conflated. Cache never
   // created — the problem is in the request (threshold, prefix contents).
-  // Cache created but not read — the problem is routing or lifetime.
+  // Cache created but not read — the problem is the prefix or its lifetime.
   if (written === 0) {
     console.error(
       '\nCache NOT created: request 1 wrote zero tokens to cache, so the whole\n' +
@@ -161,7 +138,7 @@ async function main() {
         'What to check:\n' +
         '  - the prefix is shorter than this model’s minimum cacheable size;\n' +
         '  - the variable part sits BEFORE cache_control instead of after it;\n' +
-        '  - cache_control never reached the provider at all.',
+        '  - cache_control never reached the API at all.',
     );
   } else {
     console.error(
@@ -169,9 +146,8 @@ async function main() {
         'History is still being resent at full price. What to check:\n' +
         '  - the prefix contains something variable (a date, an id, a counter);\n' +
         '  - more than the cache lifetime passed between requests (5 min default);\n' +
-        '  - the requests went to different providers. Pin one with\n' +
-        '    provider.order and allow_fallbacks: false — this happens even to\n' +
-        '    Anthropic models, which have up to nine endpoints on OpenRouter.',
+        '  - the requests went through different API keys in different\n' +
+        '    workspaces — the cache is per workspace.',
     );
   }
   process.exit(1);

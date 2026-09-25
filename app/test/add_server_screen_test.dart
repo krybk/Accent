@@ -15,7 +15,7 @@ void main() {
   });
 
   const password = 'a-root-password';
-  const providerKey = 'sk-or-v1-a-provider-key';
+  const providerKey = 'sk-ant-a-provider-key';
 
   group('validation', () {
     testWidgets('an empty form is rejected field by field, each named', (
@@ -31,7 +31,7 @@ void main() {
       expect(find.text('Enter the host'), findsOneWidget);
       expect(find.text('Enter the username'), findsOneWidget);
       expect(find.text('Enter the root password'), findsOneWidget);
-      expect(find.text('Enter the OpenRouter API key'), findsOneWidget);
+      expect(find.text('Enter the Anthropic API key'), findsOneWidget);
       expect(
         find.text('Port must be a number between 1 and 65535'),
         findsOneWidget,
@@ -122,7 +122,7 @@ void main() {
       // key has been proven to work.
       expect(created.password.released, isFalse);
       expect(created.password.value, password);
-      expect(created.openRouterApiKey, providerKey);
+      expect(created.anthropicApiKey, providerKey);
     });
 
     testWidgets('returns null when the form is left instead of submitted', (
@@ -178,7 +178,7 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
       // The values did survive the trip to the caller, so this is not passing by
       // having lost them.
-      expect(handedBack.single?.openRouterApiKey, providerKey);
+      expect(handedBack.single?.anthropicApiKey, providerKey);
     });
 
     testWidgets('the password field is obscured while it is being typed', (
@@ -265,7 +265,7 @@ Future<void> _fillAll(
   String port = '2222',
   String username = 'root',
   String password = 'a-root-password',
-  String providerKey = 'sk-or-v1-a-provider-key',
+  String providerKey = 'sk-ant-a-provider-key',
 }) async {
   await _fill(tester, AddServerScreen.nameField, name);
   await _fill(tester, AddServerScreen.hostField, host);

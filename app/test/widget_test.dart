@@ -109,7 +109,7 @@ void main() {
     );
     await tester.enterText(
       find.byKey(AddServerScreen.providerKeyField),
-      'sk-or-v1-a-provider-key',
+      'sk-ant-a-provider-key',
     );
     await tester.ensureVisible(find.byKey(AddServerScreen.submitButton));
     await tester.pumpAndSettle();
@@ -127,7 +127,7 @@ void main() {
     // screen does not start the bootstrap — that is the next task — so it drops
     // both the moment the form hands them over.
     expect(find.textContaining('a-root-password'), findsNothing);
-    expect(find.textContaining('sk-or-v1'), findsNothing);
+    expect(find.textContaining('sk-ant-'), findsNothing);
     expect(
       await profiles.providerKey((await profiles.list()).single.id),
       isNull,

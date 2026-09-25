@@ -16,7 +16,7 @@ final class NewServer {
   NewServer({
     required this.profile,
     required this.password,
-    required this.openRouterApiKey,
+    required this.anthropicApiKey,
   });
 
   /// Saved with `bootstrapped: false`: an intention until the stack answers.
@@ -25,10 +25,10 @@ final class NewServer {
   /// In its box, so the bootstrap can empty it the moment the key works.
   final RootPassword password;
 
-  /// The stack declares `OPENROUTER_API_KEY` with `:?` in its compose file and
+  /// The stack declares `ANTHROPIC_API_KEY` with `:?` in its compose file and
   /// refuses to start without it, which is why it is typed here alongside the
   /// password rather than asked for later.
-  final String openRouterApiKey;
+  final String anthropicApiKey;
 
   /// Names what it carries without revealing any of it, for the same reason
   /// [ServerProfile.toString] and [RootPassword.toString] do.
@@ -153,7 +153,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
       NewServer(
         profile: profile,
         password: RootPassword(_password.text),
-        openRouterApiKey: _providerKey.text.trim(),
+        anthropicApiKey: _providerKey.text.trim(),
       ),
     );
   }
@@ -254,11 +254,11 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 decoration: const InputDecoration(
-                  labelText: 'OpenRouter API key',
+                  labelText: 'Anthropic API key',
                   helperText: 'The stack will not start without it',
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => _required(value, 'OpenRouter API key'),
+                validator: (value) => _required(value, 'Anthropic API key'),
               ),
               if (_failure != null) ...[
                 const SizedBox(height: 16),

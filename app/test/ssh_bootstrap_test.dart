@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// stored value looking for it, and a password of "secret" would match prose.
 const rootPassword = 'Pw-9xQvT2mLk-not-to-be-seen';
 
-const providerKey = 'sk-or-v1-test-provider-key';
+const providerKey = 'sk-ant-test-provider-key';
 
 const profile = ServerProfile(
   id: 'srv1',
@@ -150,7 +150,7 @@ void main() {
       .run(
         profile: profile,
         password: password ?? RootPassword(rootPassword),
-        openRouterApiKey: providerKey,
+        anthropicApiKey: providerKey,
       )
       .toList();
 
@@ -272,18 +272,18 @@ void main() {
       final upload = byKey.uploads.single;
       expect(upload.remotePath, '/opt/accent/gateway/.env');
       // Compose reads the .env beside the compose file, not one in the project
-      // root, and declares OPENROUTER_API_KEY with `:?` — a missing value there
+      // root, and declares ANTHROPIC_API_KEY with `:?` — a missing value there
       // is a stack that refuses to start.
       for (final key in const [
         'GATEWAY_TOKEN',
         'LITELLM_MASTER_KEY',
         'POSTGRES_PASSWORD',
-        'OPENROUTER_API_KEY',
+        'ANTHROPIC_API_KEY',
         'GATEWAY_PORT',
       ]) {
         expect(_envValue(upload, key), isNotEmpty, reason: key);
       }
-      expect(_envValue(upload, 'OPENROUTER_API_KEY'), providerKey);
+      expect(_envValue(upload, 'ANTHROPIC_API_KEY'), providerKey);
       expect(_envValue(upload, 'GATEWAY_PORT'), '8443');
     });
   });
@@ -656,7 +656,7 @@ void main() {
             .run(
               profile: profile,
               password: RootPassword(rootPassword),
-              openRouterApiKey: '   ',
+              anthropicApiKey: '   ',
             )
             .toList(),
         throwsArgumentError,

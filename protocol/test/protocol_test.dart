@@ -84,7 +84,7 @@ void main() {
   group('ModelInfo', () {
     test('computes how much a cache hit saves', () {
       const sonnet = ModelInfo(
-        id: 'anthropic/claude-sonnet-5',
+        id: 'claude-sonnet-5',
         displayName: 'Sonnet 5',
         inputUsdPerMillion: 2.0,
         outputUsdPerMillion: 10.0,
@@ -104,7 +104,7 @@ void main() {
       // Measured, not assumed. This is the fact that makes the cheap tier
       // expensive on short prompts, so it belongs in a test, not a comment.
       const haiku = ModelInfo(
-        id: 'anthropic/claude-haiku-4.5',
+        id: 'claude-haiku-4-5',
         displayName: 'Haiku 4.5',
         inputUsdPerMillion: 1.0,
         outputUsdPerMillion: 5.0,
@@ -146,7 +146,7 @@ void main() {
       const text = ChatChunk(text: 'hel');
       const last = ChatChunk(
         done: true,
-        model: 'anthropic/claude-sonnet-5',
+        model: 'claude-sonnet-5',
         usage: Usage(inputTokens: 13, outputTokens: 7, cacheReadTokens: 4738),
       );
 
@@ -156,7 +156,7 @@ void main() {
       final decoded = roundTrip(last.toJson, ChatChunk.fromJson);
       expect(decoded.done, isTrue);
       expect(decoded.usage!.servedFromCache, isTrue);
-      expect(decoded.model, 'anthropic/claude-sonnet-5');
+      expect(decoded.model, 'claude-sonnet-5');
     });
   });
 }

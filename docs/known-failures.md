@@ -49,14 +49,14 @@ rather than cheap (details in `docs/engineering-journal.md`).
 
 **Symptom.** Request 1 writes to cache, request 2 reads zero.
 
-**Cause.** Either the prefix changed between requests (a date, an id, a counter
-inside the cached part), or the requests went to different providers. The latter
-is not rare even for Anthropic models: OpenRouter serves them from up to nine
-distinct endpoints.
+**Cause.** The prefix changed between requests (a date, an id, a counter inside
+the cached part), more than the cache lifetime passed between them, or the two
+requests used keys from different workspaces — the cache is per workspace.
+(Through OpenRouter, removed on 2026-09-25, requests landing on different
+providers was a fourth cause; a direct connection has one provider.)
 
 **Fix.** Move the variable part out of the prefix — it belongs **after**
-`cache_control`. And pin the provider in the request body:
-`"provider": {"order": ["Anthropic"], "allow_fallbacks": false}`.
+`cache_control`.
 
 ## The gateway image fails to build with a dependency downgrade
 

@@ -176,7 +176,7 @@ void main() {
       // Defaulting a typo to a working tier is how a mistake becomes a bill on
       // the most expensive model.
       expect(resolveTier('sonnnet'), isNull);
-      expect(resolveTier(opusTier)!.id, 'anthropic/claude-opus-5');
+      expect(resolveTier(opusTier)!.id, 'claude-opus-5-5');
     });
   });
 }
