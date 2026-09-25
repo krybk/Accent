@@ -131,16 +131,18 @@ design; the debug build CI runs is unaffected.
 
 ## Models
 
-Haiku, Sonnet and Opus are reachable through the gateway, as are third-party
-models — directly or via OpenRouter, switchable from the UI. Spend is accounted
-per call, which turned out to matter more than the choice of tier: the money goes
-into resending history, not into the length of answers. Measurements and
+Haiku, Sonnet and Opus are reachable through the gateway, which calls the
+Anthropic API directly with the server's own `ANTHROPIC_API_KEY`. The key is
+entered when the server is added, kept in the phone's secure storage, and
+written to that server's `.env` during bootstrap. Spend is accounted per call,
+which turned out to matter more than the choice of tier: the money goes into
+resending history, not into the length of answers. Measurements and
 conclusions are in [`docs/engineering-journal.md`](docs/engineering-journal.md).
 
 To verify that prompt caching actually works:
 
 ```
-OPENROUTER_API_KEY=... node scripts/cache-canary.js anthropic/claude-sonnet-5
+ANTHROPIC_API_KEY=... node scripts/cache-canary.js claude-sonnet-5
 ```
 
 ## Pipeline template

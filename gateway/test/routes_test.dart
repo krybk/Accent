@@ -190,7 +190,7 @@ void main() {
     test('streams text then a closing frame with usage', () async {
       final client = streamingLiteLlm([
         {
-          'model': 'anthropic/claude-sonnet-5',
+          'model': 'claude-sonnet-5',
           'choices': [
             {
               'delta': {'content': 'he'},
@@ -231,7 +231,7 @@ void main() {
 
       final last = chunks.last;
       expect(last.done, isTrue);
-      expect(last.model, 'anthropic/claude-sonnet-5');
+      expect(last.model, 'claude-sonnet-5');
       expect(last.usage!.servedFromCache, isTrue);
       expect(last.usage!.cacheReadTokens, 4738);
       expect(last.usage!.costUsd, closeTo(0.000512, 1e-9));

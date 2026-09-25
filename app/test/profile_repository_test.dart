@@ -88,6 +88,50 @@ void main() {
       expect(store.keys.where((k) => k.startsWith('server.')), isEmpty);
     });
 
+    test('the provider key is stored under the Anthropic name', () async {
+      await repo.storeProviderKey('srv_1', 'sk-ant-test');
+
+      expect(await repo.providerKey('srv_1'), 'sk-ant-test');
+      expect(store.keys, contains('server.srv_1.anthropic_api_key'));
+    });
+
+    group('a leftover OpenRouter key', () {
+      // Stored by earlier builds. The stack no longer reads it, so it is
+      // deleted rather than migrated, and never offered as the Anthropic key.
+      const legacy = 'server.srv_1.openrouter_api_key';
+
+      test('is not read as the provider key', () async {
+        await store.write(legacy, 'old');
+
+        expect(await repo.providerKey('srv_1'), isNull);
+      });
+
+      test('is deleted when the profile is saved again', () async {
+        await store.write(legacy, 'old');
+
+        await repo.save(profile);
+
+        expect(store.keys, isNot(contains(legacy)));
+      });
+
+      test('is deleted when a new provider key is stored', () async {
+        await store.write(legacy, 'old');
+
+        await repo.storeProviderKey('srv_1', 'sk-ant-test');
+
+        expect(store.keys, isNot(contains(legacy)));
+      });
+
+      test('is deleted when the server is forgotten', () async {
+        await repo.save(profile);
+        await store.write(legacy, 'old');
+
+        await repo.forget('srv_1');
+
+        expect(store.keys, isNot(contains(legacy)));
+      });
+    });
+
     test('forgetting one server does not touch another', () async {
       const other = ServerProfile(
         id: 'srv_2',

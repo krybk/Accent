@@ -10,7 +10,9 @@ const haikuTier = 'haiku';
 const sonnetTier = 'sonnet';
 const opusTier = 'opus';
 
-/// Prices are per million tokens, as billed by OpenRouter.
+/// Prices are per million tokens, Anthropic's published first-party API rates:
+/// the gateway calls the Anthropic API directly (see `litellm/config.yaml`),
+/// and each `id` is the model id LiteLLM sends there.
 ///
 /// `minCacheableTokens` is measured, not copied from documentation. Haiku sits
 /// four times higher than the other two, and below that threshold it does not
@@ -19,7 +21,7 @@ const opusTier = 'opus';
 /// numbers should re-run `node scripts/cache-canary.js <model>` first.
 const modelCatalog = <String, ModelInfo>{
   haikuTier: ModelInfo(
-    id: 'anthropic/claude-haiku-4.5',
+    id: 'claude-haiku-4-5',
     displayName: 'Haiku 4.5',
     inputUsdPerMillion: 1.0,
     outputUsdPerMillion: 5.0,
@@ -28,7 +30,7 @@ const modelCatalog = <String, ModelInfo>{
     contextWindow: 200000,
   ),
   sonnetTier: ModelInfo(
-    id: 'anthropic/claude-sonnet-5',
+    id: 'claude-sonnet-5',
     displayName: 'Sonnet 5',
     inputUsdPerMillion: 2.0,
     outputUsdPerMillion: 10.0,
@@ -37,11 +39,13 @@ const modelCatalog = <String, ModelInfo>{
     contextWindow: 1000000,
   ),
   opusTier: ModelInfo(
-    id: 'anthropic/claude-opus-5',
-    displayName: 'Opus 5',
-    inputUsdPerMillion: 5.0,
-    outputUsdPerMillion: 25.0,
-    cacheReadUsdPerMillion: 0.5,
+    id: 'claude-opus-5-5',
+    displayName: 'Opus 5.5',
+    inputUsdPerMillion: 4.0,
+    outputUsdPerMillion: 20.0,
+    cacheReadUsdPerMillion: 0.2,
+    // Carried over from Opus 5, where it was measured. Not yet re-measured on
+    // Opus 5.5: run the canary against claude-opus-5-5 before relying on it.
     minCacheableTokens: 1024,
     contextWindow: 1000000,
   ),

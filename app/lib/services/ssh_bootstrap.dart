@@ -227,23 +227,23 @@ class SshBootstrap {
   /// It ends after the last stage, or after the first [BootstrapStageFailed].
   ///
   /// [password] is emptied during [BootstrapStage.keyOnlyConnect] and is of no
-  /// further use to the caller afterwards. [openRouterApiKey] is an input, not a
+  /// further use to the caller afterwards. [anthropicApiKey] is an input, not a
   /// generated value — compose declares it `:?` and the stack will not start
   /// without it — and it is stored as a secret, never on the profile.
   ///
-  /// Throws [ArgumentError] on an empty [openRouterApiKey]. That is a caller
+  /// Throws [ArgumentError] on an empty [anthropicApiKey]. That is a caller
   /// bug: the screen that collects it validates it, and discovering it here
   /// would mean discovering it after several minutes of deploying.
   Stream<BootstrapEvent> run({
     required ServerProfile profile,
     required RootPassword password,
-    required String openRouterApiKey,
+    required String anthropicApiKey,
   }) async* {
-    final providerKey = openRouterApiKey.trim();
+    final providerKey = anthropicApiKey.trim();
     if (providerKey.isEmpty) {
       throw ArgumentError.value(
         '',
-        'openRouterApiKey',
+        'anthropicApiKey',
         'The stack will not start without a provider key',
       );
     }
@@ -582,7 +582,7 @@ class SshBootstrap {
 GATEWAY_TOKEN=$gatewayToken
 LITELLM_MASTER_KEY=$litellmKey
 POSTGRES_PASSWORD=$postgresPassword
-OPENROUTER_API_KEY=$providerKey
+ANTHROPIC_API_KEY=$providerKey
 GATEWAY_PORT=${profile.gatewayPort}
 ''';
 

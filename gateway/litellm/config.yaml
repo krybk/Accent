@@ -4,15 +4,13 @@
 # specific string. Swapping the underlying model then becomes an edit here plus a
 # visible commit, rather than a silent change of what the app is paying for.
 #
-# Two settings repeat on every entry, and both cost money when omitted:
+# Every tier talks to the Anthropic API directly, with the server's own
+# ANTHROPIC_API_KEY. There is no intermediary and so no provider to pin: a
+# direct connection has one provider, and the prompt cache stays on it.
 #
-#   1. Exact model IDs, never OpenRouter's ~family-latest aliases. An alias will
-#      one day resolve to a pricier model without anything in the logs changing.
-#
-#   2. provider.order with allow_fallbacks: false. Anthropic models on OpenRouter
-#      are served by up to nine endpoints (Anthropic, Google, Azure, Bedrock at
-#      differing prices). Unpinned, adjacent requests land on different providers
-#      and the prompt cache does not survive the move — measured, not assumed.
+# Exact model IDs, never aliases. An alias will one day resolve to a pricier
+# model without anything in the logs changing. The IDs here must match the ones
+# in gateway/lib/src/catalog.dart, whose prices describe them.
 
 model_list:
   # Mechanical work behind a long stable prefix. Cheap only above ~4096 tokens
@@ -20,33 +18,21 @@ model_list:
   # more than Sonnet's cached input. See docs/engineering-journal.md.
   - model_name: haiku
     litellm_params:
-      model: openrouter/anthropic/claude-haiku-4.5
-      api_key: os.environ/OPENROUTER_API_KEY
-      extra_body:
-        provider:
-          order: ["Anthropic"]
-          allow_fallbacks: false
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
 
   # Default tier for ordinary work.
   - model_name: sonnet
     litellm_params:
-      model: openrouter/anthropic/claude-sonnet-5
-      api_key: os.environ/OPENROUTER_API_KEY
-      extra_body:
-        provider:
-          order: ["Anthropic"]
-          allow_fallbacks: false
+      model: anthropic/claude-sonnet-5
+      api_key: os.environ/ANTHROPIC_API_KEY
 
-  # Hard problems and exact architecture. Five times a Haiku turn, so it is
+  # Hard problems and exact architecture. Several times a Haiku turn, so it is
   # chosen deliberately, never as a fallback.
   - model_name: opus
     litellm_params:
-      model: openrouter/anthropic/claude-opus-5
-      api_key: os.environ/OPENROUTER_API_KEY
-      extra_body:
-        provider:
-          order: ["Anthropic"]
-          allow_fallbacks: false
+      model: anthropic/claude-opus-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

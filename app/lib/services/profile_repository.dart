@@ -42,7 +42,13 @@ class ProfileRepository {
   static String _privateKeyKey(String id) => 'server.$id.ssh_private_key';
   static String _gatewayTokenKey(String id) => 'server.$id.gateway_token';
   static String _certKey(String id) => 'server.$id.gateway_cert';
-  static String _providerKeyKey(String id) => 'server.$id.openrouter_api_key';
+  static String _providerKeyKey(String id) => 'server.$id.anthropic_api_key';
+
+  // Where an OpenRouter key used to be kept. The stack no longer reads one, so
+  // it is not migrated — it is deleted wherever the profile is written, and
+  // [forget]'s prefix sweep covers it too, so it does not linger on the device.
+  static String _legacyProviderKeyKey(String id) =>
+      'server.$id.openrouter_api_key';
   static String _litellmKeyKey(String id) => 'server.$id.litellm_master_key';
   static String _postgresPasswordKey(String id) =>
       'server.$id.postgres_password';
@@ -66,6 +72,7 @@ class ProfileRepository {
       profiles[index] = profile;
     }
     await _saveAll(profiles);
+    await _store.delete(_legacyProviderKeyKey(profile.id));
   }
 
   /// Removes a profile and everything it owns.
@@ -96,11 +103,13 @@ class ProfileRepository {
 
   Future<String?> gatewayCertificate(String id) => _store.read(_certKey(id));
 
-  /// The model provider key. A secret, so it lives here rather than on the
-  /// profile: it is the one credential in the stack that talks to the outside
-  /// world, and it is billable.
-  Future<void> storeProviderKey(String id, String key) =>
-      _store.write(_providerKeyKey(id), key);
+  /// The model provider key — the server's Anthropic API key. A secret, so it
+  /// lives here rather than on the profile: it is the one credential in the
+  /// stack that talks to the outside world, and it is billable.
+  Future<void> storeProviderKey(String id, String key) async {
+    await _store.write(_providerKeyKey(id), key);
+    await _store.delete(_legacyProviderKeyKey(id));
+  }
 
   Future<String?> providerKey(String id) => _store.read(_providerKeyKey(id));
 
