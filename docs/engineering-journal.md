@@ -348,3 +348,10 @@ secrets even on a fork's pull request.
 
 The provider-pinning measurements above stay as history: they were true of
 OpenRouter and do not apply to a direct connection, which has one provider.
+
+The gateway went direct in the same change set (`auto/gateway-direct-anthropic`):
+LiteLLM calls the Anthropic API with the server's `ANTHROPIC_API_KEY`. One
+thing is lost with it. The canary used OpenRouter's `/api/v1/generation` to
+report what each request was actually charged (entry "Constraints of the target
+environment" above). The Anthropic API has no per-request cost endpoint, so the
+canary now reports token counts only rather than print an estimate as a charge.
