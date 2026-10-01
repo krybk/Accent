@@ -1,0 +1,41 @@
+{
+  "@@locale": "en",
+  "languageName": "English",
+  "languageSystem": "System",
+  "languageMenuTooltip": "Language",
+  "serversTitle": "Servers",
+  "addServerTooltip": "Add a server",
+  "serverBootstrapped": "Bootstrapped",
+  "serverNotBootstrapped": "Not bootstrapped",
+  "serversLoadFailed": "Could not read the stored servers",
+  "tryAgain": "Try again",
+  "serversEmptyTitle": "No servers yet",
+  "serversEmptyHint": "Add a server to deploy the stack onto it and start a chat.",
+  "addServerTitle": "Add a server",
+  "fieldName": "Name",
+  "fieldNameHelper": "Optional — the host is used when left blank",
+  "fieldHost": "Host",
+  "fieldHostHint": "name.example.com or 192.0.2.10",
+  "fieldPort": "SSH port",
+  "fieldUsername": "Username",
+  "sectionOneTimeSecrets": "Used once, never stored",
+  "fieldRootPassword": "Root password",
+  "fieldRootPasswordHelper": "The bootstrap installs a key with it and then drops it",
+  "fieldProviderKey": "Anthropic API key",
+  "fieldProviderKeyHelper": "The stack will not start without it",
+  "errorEnterHost": "Enter the host",
+  "errorEnterUsername": "Enter the username",
+  "errorEnterRootPassword": "Enter the root password",
+  "errorEnterProviderKey": "Enter the Anthropic API key",
+  "errorPortRange": "Port must be a number between 1 and 65535",
+  "errorSaveFailed": "Could not save the server: {error}",
+  "@errorSaveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "saving": "Saving…",
+  "saveServer": "Save the server"
+}
