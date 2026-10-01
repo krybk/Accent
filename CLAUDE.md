@@ -5,6 +5,10 @@ it before making changes — it holds the stack, the commands, the secret-handli
 rules for a public repository, and the measured facts about model cost that
 determine which tier to use.
 
+## Conventions
+
+- UI strings live in `app/lib/l10n/*.arb`, one file per language; never hard-code a user-visible string in a widget (krybk/aimanager#176).
+
 Two files carry the project's memory, and both are worth reading before starting
 work rather than after:
 

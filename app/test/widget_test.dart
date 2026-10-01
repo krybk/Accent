@@ -1,3 +1,4 @@
+import 'package:accent/locale_controller.dart';
 import 'package:accent/main.dart';
 import 'package:accent/models/server_profile.dart';
 import 'package:accent/screens/add_server_screen.dart';
@@ -16,7 +17,9 @@ void main() {
   /// exactly this reason: the Keystore lives behind a platform channel and would
   /// make every one of these tests need a device.
   Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(AccentApp(profiles: profiles));
+    await tester.pumpWidget(
+      AccentApp(profiles: profiles, localeController: LocaleController()),
+    );
     await tester.pumpAndSettle();
   }
 
