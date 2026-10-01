@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/server_profile.dart';
 import '../services/profile_repository.dart';
 import '../services/ssh_bootstrap.dart';
@@ -99,13 +100,14 @@ class _AddServerScreenState extends State<AddServerScreen> {
     return 'srv_${stamp}_$noise';
   }
 
-  String? _required(String? value, String field) =>
-      (value ?? '').trim().isEmpty ? 'Enter the $field' : null;
+  String? _required(String? value, String message) =>
+      (value ?? '').trim().isEmpty ? message : null;
 
   String? _validatePort(String? value) {
+    final l10n = AppLocalizations.of(context);
     final port = int.tryParse((value ?? '').trim());
     if (port == null || port < 1 || port > 65535) {
-      return 'Port must be a number between 1 and 65535';
+      return l10n.errorPortRange;
     }
     return null;
   }
@@ -143,7 +145,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
         _saving = false;
         // The repository writes profiles, never a secret, so nothing typed here
         // can appear in its error.
-        _failure = 'Could not save the server: $error';
+        _failure = AppLocalizations.of(context).errorSaveFailed('$error');
       });
       return;
     }
@@ -161,8 +163,9 @@ class _AddServerScreenState extends State<AddServerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Add a server')),
+      appBar: AppBar(title: Text(l10n.addServerTitle)),
       // A scroll view that builds every child, not a ListView: a field that has
       // scrolled out of a lazy list does not exist, so the form would neither
       // validate it nor know it is there, while its controller still holds
@@ -178,10 +181,10 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 key: AddServerScreen.nameField,
                 controller: _name,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  helperText: 'Optional — the host is used when left blank',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldName,
+                  helperText: l10n.fieldNameHelper,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -191,12 +194,12 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 autocorrect: false,
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Host',
-                  hintText: 'name.example.com or 192.0.2.10',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldHost,
+                  hintText: l10n.fieldHostHint,
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) => _required(value, 'host'),
+                validator: (value) => _required(value, l10n.errorEnterHost),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -205,9 +208,9 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'SSH port',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldPort,
+                  border: const OutlineInputBorder(),
                 ),
                 validator: _validatePort,
               ),
@@ -217,15 +220,15 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 controller: _username,
                 autocorrect: false,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldUsername,
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) => _required(value, 'username'),
+                validator: (value) => _required(value, l10n.errorEnterUsername),
               ),
               const SizedBox(height: 24),
               Text(
-                'Used once, never stored',
+                l10n.sectionOneTimeSecrets,
                 style: theme.textTheme.titleSmall,
               ),
               const SizedBox(height: 8),
@@ -236,13 +239,13 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 autocorrect: false,
                 enableSuggestions: false,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Root password',
-                  helperText:
-                      'The bootstrap installs a key with it and then drops it',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldRootPassword,
+                  helperText: l10n.fieldRootPasswordHelper,
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) => _required(value, 'root password'),
+                validator: (value) =>
+                    _required(value, l10n.errorEnterRootPassword),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -253,12 +256,13 @@ class _AddServerScreenState extends State<AddServerScreen> {
                 enableSuggestions: false,
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
-                decoration: const InputDecoration(
-                  labelText: 'Anthropic API key',
-                  helperText: 'The stack will not start without it',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.fieldProviderKey,
+                  helperText: l10n.fieldProviderKeyHelper,
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (value) => _required(value, 'Anthropic API key'),
+                validator: (value) =>
+                    _required(value, l10n.errorEnterProviderKey),
               ),
               if (_failure != null) ...[
                 const SizedBox(height: 16),
@@ -273,7 +277,7 @@ class _AddServerScreenState extends State<AddServerScreen> {
               FilledButton(
                 key: AddServerScreen.submitButton,
                 onPressed: _saving ? null : _submit,
-                child: Text(_saving ? 'Saving…' : 'Save the server'),
+                child: Text(_saving ? l10n.saving : l10n.saveServer),
               ),
             ],
           ),
