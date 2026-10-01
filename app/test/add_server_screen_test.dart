@@ -1,3 +1,4 @@
+import 'package:accent/l10n/app_localizations.dart';
 import 'package:accent/models/server_profile.dart';
 import 'package:accent/screens/add_server_screen.dart';
 import 'package:accent/services/profile_repository.dart';
@@ -230,6 +231,9 @@ Future<List<NewServer?>> _openForm(
   final handedBack = <NewServer?>[];
   await tester.pumpWidget(
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: const Locale('en'),
       home: Scaffold(
         body: Builder(
           builder: (context) => TextButton(

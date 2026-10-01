@@ -299,27 +299,24 @@ void main() {
   group('the scripted factory', () {
     const endpoint = SshEndpoint(host: '192.0.2.10', username: 'root');
 
-    test(
-      'hands out sessions in order and records how each was opened',
-      () async {
-        final byPassword = ScriptedSshSession([ScriptedCommand.ok('id -un')]);
-        final byKey = ScriptedSshSession([ScriptedCommand.ok('whoami')]);
-        final factory = ScriptedSshSessionFactory([byPassword, byKey]);
+    test('hands out sessions in order and records how each was opened', () async {
+      final byPassword = ScriptedSshSession([ScriptedCommand.ok('id -un')]);
+      final byKey = ScriptedSshSession([ScriptedCommand.ok('whoami')]);
+      final factory = ScriptedSshSessionFactory([byPassword, byKey]);
 
-        final first = await factory.connectWithPassword(endpoint, 'a-password');
-        final second = await factory.connectWithKey(endpoint, 'a-pem');
+      final first = await factory.connectWithPassword(endpoint, 'a-password');
+      final second = await factory.connectWithKey(endpoint, 'a-pem');
 
-        expect(first, same(byPassword));
-        expect(second, same(byKey));
-        // The transition this whole design exists to make: the second connection
-        // used the key, not the password the user typed.
-        expect(factory.connections.map((c) => c.kind), [
-          SshCredentialKind.password,
-          SshCredentialKind.key,
-        ]);
-        expect(factory.connections.first.endpoint.host, '192.0.2.10');
-      },
-    );
+      expect(first, same(byPassword));
+      expect(second, same(byKey));
+      // The transition this whole design exists to make: the second connection
+      // used the key, not the password the user typed.
+      expect(factory.connections.map((c) => c.kind), [
+        SshCredentialKind.password,
+        SshCredentialKind.key,
+      ]);
+      expect(factory.connections.first.endpoint.host, '192.0.2.10');
+    });
 
     test('refuses to invent a session it was not given', () async {
       final factory = ScriptedSshSessionFactory(const []);
