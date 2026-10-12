@@ -11,6 +11,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import 'catalog.dart';
 import 'config.dart';
+import 'plane_proxy.dart';
 import 'upstream_request.dart';
 
 const gatewayVersion = '0.1.0';
@@ -94,6 +95,10 @@ Router buildRouter(GatewayConfig config, http.Client client) {
       context: {'shelf.io.buffer_output': false},
     );
   });
+
+  // The control plane's own contract, forwarded verbatim over a unix socket.
+  // Not a public path: requireToken covers it like every other /v1 route.
+  router.mount('/v1/plane/', planeProxy(config.planeSocket));
 
   return router;
 }
