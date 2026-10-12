@@ -90,8 +90,8 @@ void main() {
     test('the tier name is sent, not a provider model string', () {
       // Provider pinning lives in LiteLLM's config. If the gateway sent a raw
       // provider model here it would bypass that config and lose the pin.
-      final body = buildUpstreamRequest(tier: haikuTier, request: turn);
-      expect(body['model'], 'haiku');
+      final body = buildUpstreamRequest(tier: sonnetTier, request: turn);
+      expect(body['model'], 'sonnet');
       expect(body['model'], isNot(contains('anthropic/')));
     });
   });
@@ -156,18 +156,29 @@ void main() {
   });
 
   group('prefix threshold', () {
-    test('the shipped preamble is honest about not caching on Haiku', () {
-      // The preamble is a few hundred tokens, far below Haiku's ~4096. This test
-      // documents that gap rather than pretending it does not exist: until the
-      // prefix grows, Haiku turns are billed as fresh input every time.
-      final haiku = resolveTier(haikuTier)!;
-      expect(prefixWillCache(systemPreamble, haiku), isFalse);
+    // No catalogue tier has a 4096-token threshold any more (Haiku 4.5 had one,
+    // measured); this fixture keeps the high-threshold behaviour covered.
+    const highThreshold = ModelInfo(
+      id: 'high-threshold-fixture',
+      displayName: 'High threshold',
+      inputUsdPerMillion: 1.0,
+      outputUsdPerMillion: 5.0,
+      cacheReadUsdPerMillion: 0.1,
+      minCacheableTokens: 4096,
+      contextWindow: 200000,
+    );
+
+    test('the shipped preamble does not cache on a 4096-token threshold', () {
+      // The preamble is a few hundred tokens, far below ~4096. This test
+      // documents that gap rather than pretending it does not exist: on such a
+      // model every turn is billed as fresh input until the prefix grows.
+      expect(prefixWillCache(systemPreamble, highThreshold), isFalse);
     });
 
     test('a long prefix clears both thresholds', () {
       final long = systemPreamble * 200;
       expect(prefixWillCache(long, resolveTier(sonnetTier)!), isTrue);
-      expect(prefixWillCache(long, resolveTier(haikuTier)!), isTrue);
+      expect(prefixWillCache(long, highThreshold), isTrue);
     });
   });
 
