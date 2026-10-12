@@ -49,45 +49,10 @@ the stack onto a server. 91 tests across the three packages.
 
 CI runs four gates on every pull request and every push to `main`: a secret
 scan, the two Dart packages, the Flutter app including a debug APK build, and
-the gateway image. Failures on `main` are picked up without a human — see below.
+the gateway image.
 
 Still to come: the screen that drives the bootstrap and shows its progress, and
 the chat itself.
-
-## Working through Issues
-
-The repository fixes its own red builds, and takes work by Issue. Open one
-mentioning `@claude` and the chain runs to a merge on its own: a session is
-started, the fix lands on a branch under `auto/`, a pull request is opened,
-labelled, checked, and squash-merged when green, and the Issue is closed by the
-merge. A red run on `main` files its own Issue first, titled by the job and step
-that failed.
-
-Worth knowing before relying on it:
-
-- Only logins listed in `ALLOWED_AUTHORS` in
-  [`claude.yml`](.github/workflows/claude.yml) can start a session. Anyone
-  else's Issue costs nothing and is ignored, which matters because this
-  repository is public and a session has write access and spends money. Pull
-  requests from forks are left to a human for the same reason: `claude.yml`
-  refuses to start a session on one, whoever asks.
-- **A pull request from an `auto/` branch merges unread once CI is green** —
-  including changes to the workflows themselves. That is deliberate: the trigger
-  wiring lives there, and a loop that cannot repair its own plumbing needs a
-  human for every break in it. `scripts/check-secrets.sh` and `.gitignore` stay
-  guarded instead, chosen for irreversibility: a bad merge is revertible, a key
-  published from a public repository is not.
-- One retry, then the Issue gets `needs-human`. That label is the signal that
-  automation gave up; a later green run will not clear it.
-- Two secrets carry the whole thing: `AUTOMATION_TOKEN`, a PAT with `repo` and
-  `workflow` scope, and `CLAUDE_CODE_OAUTH_TOKEN`, the owner's Claude
-  subscription token — CI talks to Claude directly. Both are checked before a
-  session starts so a missing one names itself. If the PAT expires the loop breaks
-  quietly — Issues keep being filed and nothing answers them.
-
-Diagnosed failure causes live in
-[`docs/known-failures.md`](docs/known-failures.md), which is worth reading
-before investigating a red run rather than after.
 
 ## Releases
 
@@ -133,8 +98,8 @@ design; the debug build CI runs is unaffected.
 
 ## Models
 
-Haiku, Sonnet and Opus are reachable through the gateway, which calls the
-Anthropic API directly with the server's own `ANTHROPIC_API_KEY`. The key is
+Sonnet and Opus are reachable through the gateway, which calls the Anthropic API
+directly with the server's own `ANTHROPIC_API_KEY`. The key is
 entered when the server is added, kept in the phone's secure storage, and
 written to that server's `.env` during bootstrap. Spend is accounted per call,
 which turned out to matter more than the choice of tier: the money goes into
@@ -144,12 +109,5 @@ conclusions are in [`docs/engineering-journal.md`](docs/engineering-journal.md).
 To verify that prompt caching actually works:
 
 ```
-ANTHROPIC_API_KEY=... node scripts/cache-canary.js claude-sonnet-5
+ANTHROPIC_API_KEY=... node scripts/cache-canary.js claude-sonnet-5-5
 ```
-
-## Pipeline template
-
-The repository also serves as the template for subsequent apps: the scaffolding
-(`.github/`, `scripts/`, `docs/`) carries over wholesale, while the application
-half (`app/`, `gateway/`, `protocol/`) is rewritten. The split is documented in
-[`docs/contributing.md`](docs/contributing.md).
