@@ -57,7 +57,7 @@ Handler planeProxy(String? socketPath) {
         upstream.headers.set('content-type', contentType);
       }
       upstream.add(body);
-      response = await upstream.close().timeout(const Duration(seconds: 30));
+      response = await upstream.close();
     } on Object catch (error) {
       client.close(force: true);
       return _jsonError(
