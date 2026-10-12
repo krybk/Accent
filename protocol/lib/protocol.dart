@@ -8,3 +8,4 @@ library;
 
 export 'src/catalog.dart';
 export 'src/chat.dart';
+export 'src/plane.dart';

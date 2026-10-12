@@ -9,15 +9,21 @@ class GatewayConfig {
     required this.litellmUrl,
     required this.litellmKey,
     this.port = 8080,
+    this.planeSocket,
   });
 
-  /// Bearer token the app must present. Root-equivalent, because the gateway
-  /// holds the Docker socket.
+  /// Bearer token the app must present. It is the credential for everything the
+  /// gateway forwards, the control plane included, so treat it as seriously as
+  /// any credential on the host.
   final String token;
 
   final Uri litellmUrl;
   final String litellmKey;
   final int port;
+
+  /// Path of the control plane's unix socket; `/v1/plane/*` is forwarded to it.
+  /// Null when no plane is configured.
+  final String? planeSocket;
 
   /// Reads configuration, failing loudly on anything missing.
   ///
@@ -37,7 +43,8 @@ class GatewayConfig {
     }
 
     final token = required('GATEWAY_TOKEN');
-    // A short token is a guessable token, and this one is root-equivalent.
+    // A short token is a guessable token, and this one guards everything the
+    // gateway forwards.
     if (token.length < 32) {
       throw const ApiError(
         code: 'config_weak_token',
@@ -50,6 +57,9 @@ class GatewayConfig {
       litellmUrl: Uri.parse(env['LITELLM_URL'] ?? 'http://litellm:4000'),
       litellmKey: required('LITELLM_MASTER_KEY'),
       port: int.tryParse(env['PORT'] ?? '') ?? 8080,
+      planeSocket: (env['PLANE_SOCKET'] ?? '').isEmpty
+          ? null
+          : env['PLANE_SOCKET'],
     );
   }
 }

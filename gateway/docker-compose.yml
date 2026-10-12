@@ -34,12 +34,12 @@ services:
       LITELLM_URL: http://litellm:4000
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
       DATABASE_URL: postgres://accent:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/accent
+      PLANE_SOCKET: /run/plane/plane.sock
     volumes:
-      # Deploying containers on request is the point of the product, and that
-      # requires the Docker socket. It is also root-equivalent on the host, which
-      # is why the gateway token must be treated as seriously as the root
-      # password. A socket proxy with an operation allowlist is planned.
-      - /var/run/docker.sock:/var/run/docker.sock
+      # The directory holding the control plane's unix socket on the host. The
+      # gateway forwards /v1/plane/* to it; with no plane there, those routes
+      # answer 503.
+      - ${PLANE_SOCKET_DIR:-/run/accent-plane}:/run/plane
       - gateway-data:/var/lib/accent
     depends_on:
       postgres:
