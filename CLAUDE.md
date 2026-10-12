@@ -32,8 +32,8 @@ Each rediscovery cost runs.
 Two things follow for anyone working here:
 
 - The local `docs/known-failures.md` stays **self-contained**. `aimanager` is
-  private, so a session here can only read it through `gh` with
-  `AUTOMATION_TOKEN` — extra turns for something diagnosis should never need.
+  private, so a session here can only read it through `gh` with a token that
+  can see it — extra turns for something diagnosis should never need.
 - The shared copy is the aggregate, for a human and for the next project.
   Template syncing does not exist yet, so the two can drift; update both when the
   cause is not specific to Flutter or Android.

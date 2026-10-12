@@ -284,3 +284,19 @@ a session dying one turn short of opening its pull request. This is not that.
 `.gitignore`. If the secret already reached a published commit, deleting the file
 is not enough: **the key must be revoked and reissued**, because the history is
 public.
+
+## `Auto-Fix Loop Monitor` failed on a pull request with `HttpError: Not Found`
+
+**Symptom.** Run 36812287865 on pull request #20, 2026-10-01: the job
+`close-issue-on-merge` failed with the annotation
+`Unhandled error: HttpError: Not Found`.
+
+**Cause.** The step took the first `#N` anywhere in the pull request body, with
+`body.match(/#(\d+)/)`, as an Issue of this repository. That body's first
+reference was the control plane's back-reference comment, which names an Issue
+in another repository, so `issues.get` asked for an Issue number this repository
+does not have.
+
+**Fix.** None to the step: the workflow was removed together with the rest of
+the Actions loop. The control plane now opens, merges and reports these pull
+requests.
