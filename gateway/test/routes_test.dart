@@ -130,14 +130,11 @@ void main() {
       final models = (body['models'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
 
-      expect(
-        models.map((m) => m['tier']),
-        containsAll(['haiku', 'sonnet', 'opus']),
-      );
-      // The app needs the threshold to warn that a short prompt on Haiku will
-      // not cache, so it has to travel with the catalogue.
-      final haiku = models.firstWhere((m) => m['tier'] == 'haiku');
-      expect(haiku['min_cacheable_tokens'], 4096);
+      expect(models.map((m) => m['tier']), containsAll(['sonnet', 'opus']));
+      // The app needs the threshold to warn that a short prompt will not cache,
+      // so it has to travel with the catalogue.
+      final sonnet = models.firstWhere((m) => m['tier'] == 'sonnet');
+      expect(sonnet['min_cacheable_tokens'], 1024);
     });
   });
 
@@ -257,7 +254,7 @@ void main() {
         await post(
           client,
           const ChatRequest(
-            model: 'haiku',
+            model: 'sonnet',
             messages: [ChatMessage(role: ChatRole.user, text: 'hi')],
           ).toJson(),
         ),

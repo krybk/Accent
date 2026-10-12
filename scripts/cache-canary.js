@@ -16,7 +16,7 @@
 // Usage: ANTHROPIC_API_KEY=... node scripts/cache-canary.js [model]
 
 const API = 'https://api.anthropic.com';
-const MODEL = process.argv[2] || 'claude-sonnet-5';
+const MODEL = process.argv[2] || 'claude-sonnet-5-5';
 const KEY = process.env.ANTHROPIC_API_KEY;
 
 // The minimum cacheable prefix depends on the tier, and the gap is large.

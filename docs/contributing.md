@@ -4,20 +4,6 @@ An Android remote for server-side AI infrastructure. The app stores server
 profiles, deploys a container stack onto a chosen server, and talks to it from a
 chat: text, images, files, video, voice.
 
-This repository doubles as the template for the app pipeline. Future apps fork
-it, drop the application half, and keep the scaffolding.
-
-## What carries over to a new app, and what does not
-
-| Directory | Role |
-| --- | --- |
-| `.github/workflows/` | pipeline, carries over wholesale |
-| `scripts/` | pipeline, carries over wholesale |
-| `docs/` | pipeline, carries over (entries cleared) |
-| `app/` | application, rewritten |
-| `gateway/` | application, rewritten |
-| `protocol/` | application, rewritten |
-
 ## Stack
 
 Dart on both sides. One language, one toolchain, and the chat protocol types are
@@ -50,49 +36,10 @@ genuinely CPU-heavy (speech-to-text) runs in its own container.
 - `dart format --output=none --set-exit-if-changed protocol gateway app`
 - `dart test` in `protocol/` and `gateway/`; `flutter test` in `app/`
 - `./scripts/check-secrets.sh` — secrets in the index (runs in CI)
-- `python3 scripts/deepseek_apply_test.py` — the DeepSeek worker's parser (runs
-  in CI)
 - `node scripts/cache-canary.js [model]` — is prompt caching actually working
 
 The canary stays in Node because it talks to an HTTP API and has no reason to
 pull the Dart toolchain into a check that must run before anything is built.
-
-### Asking DeepSeek for a small change
-
-`deepseek.yml` puts a second, much cheaper model behind a comment on an Issue, so
-a config edit, a documentation pass or tests against a module that already exists
-stop costing a full Sonnet session. Comment on an Issue — not on a pull request,
-which it refuses — from a login on its allowlist:
-
-```
-@deepseek Rename the field to `serverId`, keeping the JSON key unchanged.
-
-files:
-- protocol/lib/src/server.dart
-- gateway/lib/src/handler.dart
-```
-
-The instruction is everything between the trigger phrase and the `files:` line,
-and each path is a list item under it. What is worth knowing before using it:
-
-- It is **one API call** to `deepseek-chat`, not an agent. It reads the files you
-  named, asks for their complete new contents, and writes them back. It cannot
-  explore the repository, run a command, or decide that a different file is the
-  one that needs changing.
-- At most **5 files** and **200 KB** of input. `.github/workflows/**`,
-  `scripts/check-secrets.sh` and `.gitignore` are refused whatever the request
-  says, as is any path that is a symlink or reaches outside the worktree.
-- Either the whole answer applies or none of it does. Anything the parser cannot
-  attribute — a missing file, a duplicate block, an unclosed fence, a truncated
-  answer — is a refusal with no branch. A half-applied patch is worse than none.
-- The relevant gates run before the push, so it does not open a pull request
-  already known to be red.
-- The branch is under `deepseek/`, which is what keeps it away from auto-merge:
-  only `auto/` branches get labelled `auto-fixed`, and only that label merges. Its
-  pull requests are labelled `ready-to-review` and wait for a human.
-- Every outcome is one comment on the Issue. A missing `DEEPSEEK_API_KEY` is
-  reported there rather than as a red run — nothing subscribes to this workflow's
-  conclusion, so a failed run would notify nobody.
 
 ## The repository is public
 
@@ -106,18 +53,16 @@ could take root, update `.gitignore` and that script together.
 
 ## Models and money
 
-Model access is direct, with no intermediary. CI's Claude sessions
-(`claude.yml`) authenticate with the owner's Claude subscription token
-(`CLAUDE_CODE_OAUTH_TOKEN`); the gateway on a user's server calls the Anthropic
-API with that server's own `ANTHROPIC_API_KEY`. OpenRouter was removed on
-2026-09-25. What follows is not general advice but measurements taken on this
-project. They change which tier you pick, which is why they live here rather
-than in someone's memory.
+Model access is direct, with no intermediary. No workflow calls a model any
+more; the gateway on a user's server calls the Anthropic API with that server's
+own `ANTHROPIC_API_KEY`. OpenRouter was removed on 2026-09-25. What follows is
+not general advice but measurements taken on this project. They change which
+tier you pick, which is why they live here rather than in someone's memory.
 
 **Exact model IDs, never aliases.** An alias will one day silently move to a
-pricier model, and a version change should be a visible commit. Current IDs in
-CI: `claude-opus-5-5` and `claude-sonnet-5` — Haiku is retired there, so
-Sonnet 5 is the floor, including for the CLI's own cheap tier. There is **no**
+pricier model, and a version change should be a visible commit. The gateway's
+IDs are `claude-sonnet-5-5` (Sonnet 5.5) and `claude-opus-5-5`, listed once in
+`gateway/lib/src/catalog.dart`; Haiku is retired. There is **no**
 `claude-haiku-5` — it was set in the environment once and failed every
 cheap-tier call with `400 not a valid model ID`, pushing that work onto more
 expensive tiers.
@@ -128,11 +73,12 @@ prefix cache did not survive the move between providers. A direct connection has
 one provider, so there is nothing to pin. The measurement stays in the
 [journal](engineering-journal.md).
 
-**Haiku is not always cheaper.** The minimum cacheable prefix, measured
-empirically: Sonnet 5 caches from ~1024 tokens, Haiku 4.5 only from ~4096. Below
-the threshold the cache is silently never created, and Haiku's $1.00/1M input
-then costs more than Sonnet's $0.20/1M cached input. Use Haiku for mechanical
-work behind a long stable prefix, not for short one-off calls.
+**Haiku was not always cheaper**, which is part of why it is gone. The minimum
+cacheable prefix, measured empirically: Sonnet 5 caches from ~1024 tokens,
+Haiku 4.5 only from ~4096. Below the threshold the cache is silently never
+created, and Haiku's $1.00/1M input then costs more than Sonnet's $0.20/1M
+cached input. The gateway's Sonnet 5.5 tier carries the Sonnet 5 threshold
+until the canary is re-run against it.
 
 **The dominant cost is resending history**, not the length of the answer. On
 Sonnet a cache write costs $0.0123 against $0.0010 for a read of the same prefix
@@ -175,15 +121,12 @@ it in repository secrets as `ANDROID_KEYSTORE_BASE64` (`base64 -w0` of the
 
 ## Repository secrets
 
-The pipeline needs these set in repository settings. Without them the workflows
-are inert rather than broken — they run and refuse, which is the intended
-direction of failure.
+The release workflow needs these set in repository settings. Without them it is
+inert rather than broken — it runs and refuses, which is the intended direction
+of failure.
 
 | Secret | Used by | Purpose |
 | --- | --- | --- |
-| `CLAUDE_CODE_OAUTH_TOKEN` | `claude.yml` | model access: the owner's Claude subscription token (`claude setup-token`), used by the action and by the one-shot triage call. Personal, so only allowed authors can spend it and fork pull requests never reach it |
-| `DEEPSEEK_API_KEY` | `deepseek.yml` | the second model's key. Absent, the worker says so in a comment on the Issue and ends green — nothing watches its conclusion, so failing would tell nobody |
-| `AUTOMATION_TOKEN` | `claude.yml`, `auto-fix-loop.yml`, `deepseek.yml` | a PAT, so PRs it opens actually start CI. It must belong to a login in `ALLOWED_AUTHORS`, or the retry comment it posts will be refused by the author gate |
 | `ANDROID_KEYSTORE_BASE64` | `release.yml` | release signing |
 | `ANDROID_KEYSTORE_PASSWORD` | `release.yml` | release signing |
 | `ANDROID_KEY_ALIAS` | `release.yml` | release signing |
