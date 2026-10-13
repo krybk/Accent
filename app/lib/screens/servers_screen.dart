@@ -3,24 +3,33 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../locale_controller.dart';
 import '../models/server_profile.dart';
+import '../services/gateway_client.dart';
 import '../services/profile_repository.dart';
+import '../services/ssh_bootstrap.dart';
+import '../services/ssh_session.dart';
 import 'add_server_screen.dart';
+import 'bootstrap_screen.dart';
+import 'server_home_screen.dart';
 
 /// The first screen: the list of servers this phone can reach.
 ///
 /// The repository arrives as a parameter rather than from a global, so a test can
 /// hand it one backed by an in-memory secret store and never touch the Android
-/// Keystore. Deploying to a server and showing that progress belong to another
-/// screen; this one lists what is stored and opens the form.
+/// Keystore. This screen opens the form, hands a new server to the bootstrap
+/// screen, and opens a bootstrapped server's home.
 class ServersScreen extends StatefulWidget {
   const ServersScreen({
     required this.profiles,
     required this.localeController,
+    this.bootstrapRunner,
+    this.gatewayClients,
     super.key,
   });
 
   final ProfileRepository profiles;
   final LocaleController localeController;
+  final BootstrapRunner? bootstrapRunner;
+  final GatewayClientFactory? gatewayClients;
 
   static const addButton = Key('servers-add');
 
@@ -37,6 +46,22 @@ class _ServersScreenState extends State<ServersScreen> {
     _servers = widget.profiles.list();
   }
 
+  BootstrapRunner get _runner =>
+      widget.bootstrapRunner ??
+      (server) =>
+          SshBootstrap(
+            sessions: const DartsshSessionFactory(),
+            profiles: widget.profiles,
+          ).run(
+            profile: server.profile,
+            password: server.password,
+            anthropicApiKey: server.anthropicApiKey,
+          );
+
+  GatewayClientFactory get _clients =>
+      widget.gatewayClients ??
+      (profile) => GatewayClient.forProfile(widget.profiles, profile);
+
   void _reload() => setState(() {
     _servers = widget.profiles.list();
   });
@@ -49,9 +74,14 @@ class _ServersScreenState extends State<ServersScreen> {
     );
     if (!mounted || created == null) return;
     // The form has already saved the profile, so the list only has to be read
-    // again. The password and the provider key it also handed back stop here:
-    // driving the bootstrap is the next screen's work, and this one deliberately
-    // does not know how — which is also why neither value is kept.
+    // again. The password and the provider key it also handed back go only to
+    // the bootstrap screen, which hands them to the runner and keeps neither.
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => BootstrapScreen(server: created, run: _runner),
+      ),
+    );
+    if (!mounted) return;
     _reload();
   }
 
@@ -101,7 +131,19 @@ class _ServersScreenState extends State<ServersScreen> {
           return ListView.separated(
             itemCount: servers.length,
             separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) => _ServerRow(servers[index]),
+            itemBuilder: (context, index) => _ServerRow(
+              servers[index],
+              onTap: servers[index].bootstrapped
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ServerHomeScreen(
+                          profile: servers[index],
+                          clients: _clients,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
           );
         },
       ),
@@ -121,9 +163,10 @@ class _ServersScreenState extends State<ServersScreen> {
 /// unfinished profile that looks identical to a working one is how someone ends
 /// up debugging a chat screen that was never going to connect.
 class _ServerRow extends StatelessWidget {
-  const _ServerRow(this.profile);
+  const _ServerRow(this.profile, {this.onTap});
 
   final ServerProfile profile;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +174,7 @@ class _ServerRow extends StatelessWidget {
     final theme = Theme.of(context);
     final ready = profile.bootstrapped;
     return ListTile(
+      onTap: onTap,
       leading: Icon(
         ready ? Icons.dns : Icons.dns_outlined,
         color: ready ? theme.colorScheme.primary : theme.colorScheme.outline,
