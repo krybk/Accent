@@ -280,11 +280,13 @@ void main() {
         'POSTGRES_PASSWORD',
         'ANTHROPIC_API_KEY',
         'GATEWAY_PORT',
+        'GATEWAY_HOST',
       ]) {
         expect(_envValue(upload, key), isNotEmpty, reason: key);
       }
       expect(_envValue(upload, 'ANTHROPIC_API_KEY'), providerKey);
       expect(_envValue(upload, 'GATEWAY_PORT'), '8443');
+      expect(_envValue(upload, 'GATEWAY_HOST'), '10.0.0.5');
     });
   });
 
