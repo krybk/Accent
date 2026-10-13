@@ -45,14 +45,15 @@ Standing up: the gateway (config, auth, routing, upstream requests, a container
 stack that builds and answers a liveness probe), the shared `protocol` package
 (model catalogue, chat types), and on the app side server profiles with their
 key material kept in the Android Keystore, plus the SSH bootstrap that deploys
-the stack onto a server. 91 tests across the three packages.
+the stack onto a server. 161 tests across the three packages.
 
 CI runs four gates on every pull request and every push to `main`: a secret
 scan, the two Dart packages, the Flutter app including a debug APK build, and
 the gateway image.
 
-Still to come: the screen that drives the bootstrap and shows its progress, and
-the chat itself.
+The app also drives the bootstrap on a progress screen, and shows the plane and
+per-model token usage through a pinned, token-authenticated gateway client.
+Still to come: the chat itself.
 
 ## Releases
 

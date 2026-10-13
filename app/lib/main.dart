@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'l10n/app_localizations.dart';
 import 'locale_controller.dart';
+import 'screens/bootstrap_screen.dart';
 import 'screens/servers_screen.dart';
+import 'services/gateway_client.dart';
 import 'services/profile_repository.dart';
 import 'services/secret_store.dart';
 
@@ -30,11 +32,15 @@ class AccentApp extends StatelessWidget {
   const AccentApp({
     required this.profiles,
     required this.localeController,
+    this.bootstrapRunner,
+    this.gatewayClients,
     super.key,
   });
 
   final ProfileRepository profiles;
   final LocaleController localeController;
+  final BootstrapRunner? bootstrapRunner;
+  final GatewayClientFactory? gatewayClients;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +68,8 @@ class AccentApp extends StatelessWidget {
         home: ServersScreen(
           profiles: profiles,
           localeController: localeController,
+          bootstrapRunner: bootstrapRunner,
+          gatewayClients: gatewayClients,
         ),
       ),
     );
