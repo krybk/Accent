@@ -37,5 +37,96 @@
     }
   },
   "saving": "Saving…",
-  "saveServer": "Save the server"
+  "saveServer": "Save the server",
+  "navPlane": "Plane",
+  "navUsage": "Usage",
+  "planeSectionPlans": "Plans",
+  "planeSectionProviders": "Providers",
+  "planeSectionServices": "Services",
+  "planeSectionPaused": "Paused models",
+  "planeSectionActions": "Quick actions",
+  "planeNoPlans": "No plans",
+  "providerCurrent": "current",
+  "providerNoKey": "no key",
+  "providerCooling": "cooling until {until} — {reason}",
+  "@providerCooling": {
+    "placeholders": {
+      "until": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "pausedIndefinitely": "indefinitely",
+  "actionArgPrompt": "Enter a number",
+  "actionRun": "Run",
+  "actionExitCode": "Exit code {code}",
+  "@actionExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "usageToday": "Today",
+  "usage7d": "7 days",
+  "usage30d": "30 days",
+  "usageSteps": "Steps",
+  "usageCost": "Cost",
+  "usageInput": "Input",
+  "usageOutput": "Output",
+  "usageCacheRead": "Cache read",
+  "usageCacheWrite": "Cache write",
+  "usageUntracked": "{count} steps predate token accounting",
+  "@usageUntracked": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usageRoles": "Roles",
+  "usageRoleChat": "Chat",
+  "usageGeneratedAt": "Generated at {time}",
+  "@usageGeneratedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "gatewayErrorTopUp": "The model provider's balance is exhausted — top it up to continue",
+  "gatewayErrorUnauthorized": "The gateway rejected the token",
+  "gatewayErrorNoPlane": "No control plane is configured on this server",
+  "gatewayErrorPlaneDown": "The control plane is not answering",
+  "gatewayErrorUnreachable": "Could not reach the server",
+  "gatewayErrorNoCredentials": "No gateway credentials are stored for this server — bootstrap it again",
+  "gatewayErrorOther": "{code}: {message}",
+  "@gatewayErrorOther": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "bootstrapTitle": "Deploying the stack",
+  "bootstrapDone": "The server is ready",
+  "bootstrapFailed": "The bootstrap failed",
+  "bootstrapClose": "Close",
+  "bootstrapFinish": "Done",
+  "bootstrapStageConnect": "Connecting with the password",
+  "bootstrapStageInstallKey": "Installing the SSH key",
+  "bootstrapStageKeyOnlyConnect": "Checking the key works without the password",
+  "bootstrapStageInstallDocker": "Installing Docker",
+  "bootstrapStageCheckout": "Fetching the stack sources",
+  "bootstrapStageWriteEnvironment": "Writing the gateway configuration",
+  "bootstrapStageStartStack": "Starting the stack",
+  "bootstrapStageAwaitHealth": "Waiting for the stack to answer",
+  "bootstrapStageReadCertificate": "Reading the certificate",
+  "bootstrapStageStoreCredentials": "Storing the credentials"
 }
