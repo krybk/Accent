@@ -283,6 +283,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save the server'**
   String get saveServer;
+
+  /// No description provided for @navPlane.
+  ///
+  /// In en, this message translates to:
+  /// **'Plane'**
+  String get navPlane;
+
+  /// No description provided for @navUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage'**
+  String get navUsage;
+
+  /// No description provided for @planeSectionPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans'**
+  String get planeSectionPlans;
+
+  /// No description provided for @planeSectionProviders.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers'**
+  String get planeSectionProviders;
+
+  /// No description provided for @planeSectionServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get planeSectionServices;
+
+  /// No description provided for @planeSectionPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused models'**
+  String get planeSectionPaused;
+
+  /// No description provided for @planeSectionActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get planeSectionActions;
+
+  /// No description provided for @planeNoPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'No plans'**
+  String get planeNoPlans;
+
+  /// No description provided for @providerCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'current'**
+  String get providerCurrent;
+
+  /// No description provided for @providerNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'no key'**
+  String get providerNoKey;
+
+  /// No description provided for @providerCooling.
+  ///
+  /// In en, this message translates to:
+  /// **'cooling until {until} — {reason}'**
+  String providerCooling(String until, String reason);
+
+  /// No description provided for @pausedIndefinitely.
+  ///
+  /// In en, this message translates to:
+  /// **'indefinitely'**
+  String get pausedIndefinitely;
+
+  /// No description provided for @actionArgPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a number'**
+  String get actionArgPrompt;
+
+  /// No description provided for @actionRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get actionRun;
+
+  /// No description provided for @actionExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code {code}'**
+  String actionExitCode(int code);
+
+  /// No description provided for @usageToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get usageToday;
+
+  /// No description provided for @usage7d.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get usage7d;
+
+  /// No description provided for @usage30d.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get usage30d;
+
+  /// No description provided for @usageSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps'**
+  String get usageSteps;
+
+  /// No description provided for @usageCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get usageCost;
+
+  /// No description provided for @usageInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get usageInput;
+
+  /// No description provided for @usageOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get usageOutput;
+
+  /// No description provided for @usageCacheRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read'**
+  String get usageCacheRead;
+
+  /// No description provided for @usageCacheWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache write'**
+  String get usageCacheWrite;
+
+  /// No description provided for @usageUntracked.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} steps predate token accounting'**
+  String usageUntracked(int count);
+
+  /// No description provided for @usageRoles.
+  ///
+  /// In en, this message translates to:
+  /// **'Roles'**
+  String get usageRoles;
+
+  /// No description provided for @usageRoleChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get usageRoleChat;
+
+  /// No description provided for @usageGeneratedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated at {time}'**
+  String usageGeneratedAt(String time);
+
+  /// No description provided for @gatewayErrorTopUp.
+  ///
+  /// In en, this message translates to:
+  /// **'The model provider\'s balance is exhausted — top it up to continue'**
+  String get gatewayErrorTopUp;
+
+  /// No description provided for @gatewayErrorUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'The gateway rejected the token'**
+  String get gatewayErrorUnauthorized;
+
+  /// No description provided for @gatewayErrorNoPlane.
+  ///
+  /// In en, this message translates to:
+  /// **'No control plane is configured on this server'**
+  String get gatewayErrorNoPlane;
+
+  /// No description provided for @gatewayErrorPlaneDown.
+  ///
+  /// In en, this message translates to:
+  /// **'The control plane is not answering'**
+  String get gatewayErrorPlaneDown;
+
+  /// No description provided for @gatewayErrorUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server'**
+  String get gatewayErrorUnreachable;
+
+  /// No description provided for @gatewayErrorNoCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'No gateway credentials are stored for this server — bootstrap it again'**
+  String get gatewayErrorNoCredentials;
+
+  /// No description provided for @gatewayErrorOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{code}: {message}'**
+  String gatewayErrorOther(String code, String message);
+
+  /// No description provided for @bootstrapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deploying the stack'**
+  String get bootstrapTitle;
+
+  /// No description provided for @bootstrapDone.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is ready'**
+  String get bootstrapDone;
+
+  /// No description provided for @bootstrapFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The bootstrap failed'**
+  String get bootstrapFailed;
+
+  /// No description provided for @bootstrapClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get bootstrapClose;
+
+  /// No description provided for @bootstrapFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get bootstrapFinish;
+
+  /// No description provided for @bootstrapStageConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting with the password'**
+  String get bootstrapStageConnect;
+
+  /// No description provided for @bootstrapStageInstallKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing the SSH key'**
+  String get bootstrapStageInstallKey;
+
+  /// No description provided for @bootstrapStageKeyOnlyConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the key works without the password'**
+  String get bootstrapStageKeyOnlyConnect;
+
+  /// No description provided for @bootstrapStageInstallDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing Docker'**
+  String get bootstrapStageInstallDocker;
+
+  /// No description provided for @bootstrapStageCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching the stack sources'**
+  String get bootstrapStageCheckout;
+
+  /// No description provided for @bootstrapStageWriteEnvironment.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing the gateway configuration'**
+  String get bootstrapStageWriteEnvironment;
+
+  /// No description provided for @bootstrapStageStartStack.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting the stack'**
+  String get bootstrapStageStartStack;
+
+  /// No description provided for @bootstrapStageAwaitHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the stack to answer'**
+  String get bootstrapStageAwaitHealth;
+
+  /// No description provided for @bootstrapStageReadCertificate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the certificate'**
+  String get bootstrapStageReadCertificate;
+
+  /// No description provided for @bootstrapStageStoreCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Storing the credentials'**
+  String get bootstrapStageStoreCredentials;
 }
 
 class _AppLocalizationsDelegate

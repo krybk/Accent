@@ -106,4 +106,168 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get saveServer => 'Сохранить сервер';
+
+  @override
+  String get navPlane => 'Панель';
+
+  @override
+  String get navUsage => 'Расход';
+
+  @override
+  String get planeSectionPlans => 'Планы';
+
+  @override
+  String get planeSectionProviders => 'Провайдеры';
+
+  @override
+  String get planeSectionServices => 'Службы';
+
+  @override
+  String get planeSectionPaused => 'Приостановленные модели';
+
+  @override
+  String get planeSectionActions => 'Быстрые действия';
+
+  @override
+  String get planeNoPlans => 'Планов нет';
+
+  @override
+  String get providerCurrent => 'текущий';
+
+  @override
+  String get providerNoKey => 'нет ключа';
+
+  @override
+  String providerCooling(String until, String reason) {
+    return 'пауза до $until — $reason';
+  }
+
+  @override
+  String get pausedIndefinitely => 'бессрочно';
+
+  @override
+  String get actionArgPrompt => 'Введите число';
+
+  @override
+  String get actionRun => 'Выполнить';
+
+  @override
+  String actionExitCode(int code) {
+    return 'Код завершения $code';
+  }
+
+  @override
+  String get usageToday => 'Сегодня';
+
+  @override
+  String get usage7d => '7 дней';
+
+  @override
+  String get usage30d => '30 дней';
+
+  @override
+  String get usageSteps => 'Шаги';
+
+  @override
+  String get usageCost => 'Стоимость';
+
+  @override
+  String get usageInput => 'Вход';
+
+  @override
+  String get usageOutput => 'Выход';
+
+  @override
+  String get usageCacheRead => 'Чтение кэша';
+
+  @override
+  String get usageCacheWrite => 'Запись в кэш';
+
+  @override
+  String usageUntracked(int count) {
+    return 'Шагов до учёта токенов: $count';
+  }
+
+  @override
+  String get usageRoles => 'Роли';
+
+  @override
+  String get usageRoleChat => 'Чат';
+
+  @override
+  String usageGeneratedAt(String time) {
+    return 'Сформировано $time';
+  }
+
+  @override
+  String get gatewayErrorTopUp =>
+      'Баланс провайдера модели исчерпан — пополните его, чтобы продолжить';
+
+  @override
+  String get gatewayErrorUnauthorized => 'Шлюз отклонил токен';
+
+  @override
+  String get gatewayErrorNoPlane =>
+      'На этом сервере не настроена панель управления';
+
+  @override
+  String get gatewayErrorPlaneDown => 'Панель управления не отвечает';
+
+  @override
+  String get gatewayErrorUnreachable => 'Не удалось связаться с сервером';
+
+  @override
+  String get gatewayErrorNoCredentials =>
+      'Для этого сервера не сохранены данные шлюза — разверните его заново';
+
+  @override
+  String gatewayErrorOther(String code, String message) {
+    return '$code: $message';
+  }
+
+  @override
+  String get bootstrapTitle => 'Развёртывание стека';
+
+  @override
+  String get bootstrapDone => 'Сервер готов';
+
+  @override
+  String get bootstrapFailed => 'Развёртывание не удалось';
+
+  @override
+  String get bootstrapClose => 'Закрыть';
+
+  @override
+  String get bootstrapFinish => 'Готово';
+
+  @override
+  String get bootstrapStageConnect => 'Подключение по паролю';
+
+  @override
+  String get bootstrapStageInstallKey => 'Установка SSH-ключа';
+
+  @override
+  String get bootstrapStageKeyOnlyConnect =>
+      'Проверка входа по ключу без пароля';
+
+  @override
+  String get bootstrapStageInstallDocker => 'Установка Docker';
+
+  @override
+  String get bootstrapStageCheckout => 'Загрузка исходников стека';
+
+  @override
+  String get bootstrapStageWriteEnvironment => 'Запись конфигурации шлюза';
+
+  @override
+  String get bootstrapStageStartStack => 'Запуск стека';
+
+  @override
+  String get bootstrapStageAwaitHealth => 'Ожидание ответа стека';
+
+  @override
+  String get bootstrapStageReadCertificate => 'Чтение сертификата';
+
+  @override
+  String get bootstrapStageStoreCredentials => 'Сохранение учётных данных';
 }
