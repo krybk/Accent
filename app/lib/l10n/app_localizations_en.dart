@@ -104,4 +104,169 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get saveServer => 'Save the server';
+
+  @override
+  String get navPlane => 'Plane';
+
+  @override
+  String get navUsage => 'Usage';
+
+  @override
+  String get planeSectionPlans => 'Plans';
+
+  @override
+  String get planeSectionProviders => 'Providers';
+
+  @override
+  String get planeSectionServices => 'Services';
+
+  @override
+  String get planeSectionPaused => 'Paused models';
+
+  @override
+  String get planeSectionActions => 'Quick actions';
+
+  @override
+  String get planeNoPlans => 'No plans';
+
+  @override
+  String get providerCurrent => 'current';
+
+  @override
+  String get providerNoKey => 'no key';
+
+  @override
+  String providerCooling(String until, String reason) {
+    return 'cooling until $until — $reason';
+  }
+
+  @override
+  String get pausedIndefinitely => 'indefinitely';
+
+  @override
+  String get actionArgPrompt => 'Enter a number';
+
+  @override
+  String get actionRun => 'Run';
+
+  @override
+  String actionExitCode(int code) {
+    return 'Exit code $code';
+  }
+
+  @override
+  String get usageToday => 'Today';
+
+  @override
+  String get usage7d => '7 days';
+
+  @override
+  String get usage30d => '30 days';
+
+  @override
+  String get usageSteps => 'Steps';
+
+  @override
+  String get usageCost => 'Cost';
+
+  @override
+  String get usageInput => 'Input';
+
+  @override
+  String get usageOutput => 'Output';
+
+  @override
+  String get usageCacheRead => 'Cache read';
+
+  @override
+  String get usageCacheWrite => 'Cache write';
+
+  @override
+  String usageUntracked(int count) {
+    return '$count steps predate token accounting';
+  }
+
+  @override
+  String get usageRoles => 'Roles';
+
+  @override
+  String get usageRoleChat => 'Chat';
+
+  @override
+  String usageGeneratedAt(String time) {
+    return 'Generated at $time';
+  }
+
+  @override
+  String get gatewayErrorTopUp =>
+      'The model provider\'s balance is exhausted — top it up to continue';
+
+  @override
+  String get gatewayErrorUnauthorized => 'The gateway rejected the token';
+
+  @override
+  String get gatewayErrorNoPlane =>
+      'No control plane is configured on this server';
+
+  @override
+  String get gatewayErrorPlaneDown => 'The control plane is not answering';
+
+  @override
+  String get gatewayErrorUnreachable => 'Could not reach the server';
+
+  @override
+  String get gatewayErrorNoCredentials =>
+      'No gateway credentials are stored for this server — bootstrap it again';
+
+  @override
+  String gatewayErrorOther(String code, String message) {
+    return '$code: $message';
+  }
+
+  @override
+  String get bootstrapTitle => 'Deploying the stack';
+
+  @override
+  String get bootstrapDone => 'The server is ready';
+
+  @override
+  String get bootstrapFailed => 'The bootstrap failed';
+
+  @override
+  String get bootstrapClose => 'Close';
+
+  @override
+  String get bootstrapFinish => 'Done';
+
+  @override
+  String get bootstrapStageConnect => 'Connecting with the password';
+
+  @override
+  String get bootstrapStageInstallKey => 'Installing the SSH key';
+
+  @override
+  String get bootstrapStageKeyOnlyConnect =>
+      'Checking the key works without the password';
+
+  @override
+  String get bootstrapStageInstallDocker => 'Installing Docker';
+
+  @override
+  String get bootstrapStageCheckout => 'Fetching the stack sources';
+
+  @override
+  String get bootstrapStageWriteEnvironment =>
+      'Writing the gateway configuration';
+
+  @override
+  String get bootstrapStageStartStack => 'Starting the stack';
+
+  @override
+  String get bootstrapStageAwaitHealth => 'Waiting for the stack to answer';
+
+  @override
+  String get bootstrapStageReadCertificate => 'Reading the certificate';
+
+  @override
+  String get bootstrapStageStoreCredentials => 'Storing the credentials';
 }
