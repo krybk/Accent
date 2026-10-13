@@ -34,7 +34,11 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    _client = widget.clients(widget.profile).then((c) => _obtained = c);
+    _client = widget.clients(widget.profile).then((c) {
+      // A client that arrives after the screen has gone is closed at once.
+      if (!mounted) c.close();
+      return _obtained = c;
+    });
   }
 
   @override
