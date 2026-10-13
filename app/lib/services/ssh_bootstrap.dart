@@ -584,6 +584,7 @@ LITELLM_MASTER_KEY=$litellmKey
 POSTGRES_PASSWORD=$postgresPassword
 ANTHROPIC_API_KEY=$providerKey
 GATEWAY_PORT=${profile.gatewayPort}
+GATEWAY_HOST=${profile.host}
 ''';
 
     // Compose reads the `.env` beside the compose file, which is why this is
