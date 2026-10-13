@@ -5,15 +5,20 @@
 # public hostname and no inbound port 80, so ACME would fail. The app pins this
 # certificate during bootstrap, which gives real transport security without
 # depending on public DNS.
+#
+# The site is named after the host the app connects to: a site with no host
+# gets no leaf certificate from the internal CA, and every handshake fails.
+# default_sni covers connections by IP address, which send no SNI.
 
 {
 	# No ACME account is needed for an internal CA, and admin API off means one
 	# fewer unauthenticated surface inside the container network.
 	admin off
 	auto_https disable_redirects
+	default_sni {$GATEWAY_HOST}
 }
 
-:8443 {
+{$GATEWAY_HOST}:8443 {
 	tls internal
 
 	# The gateway is the only upstream. Everything, including authentication,
