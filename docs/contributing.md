@@ -41,6 +41,18 @@ genuinely CPU-heavy (speech-to-text) runs in its own container.
 The canary stays in Node because it talks to an HTTP API and has no reason to
 pull the Dart toolchain into a check that must run before anything is built.
 
+### Stack smoke
+
+`./scripts/stack-smoke.sh` builds and starts caddy, gateway and postgres under
+the compose project `accent-smoke` with a throwaway env file. It proves the CA
+root the app pins completes TLS to the gateway by IP address, that the gateway
+token is enforced (401 without it), and that `/v1/plane/*` is forwarded. It
+needs Docker, never touches `gateway/.env` or the `accent` project, and removes
+its containers and volumes even when it fails. Knobs: `SMOKE_HOST` (default
+127.0.0.1), `SMOKE_PORT` (default 18443), `SMOKE_EXPECT_PLANE=1` (require 200
+from /v1/plane/status instead of accepting 503), `PLANE_SOCKET_DIR` (default
+/run/accent-plane, the compose default).
+
 ## The repository is public
 
 No secret enters history. The gateway token, TLS certificates, provider keys and
