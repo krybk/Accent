@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/server_profile.dart';
 import '../services/gateway_client.dart';
+import 'chat_screen.dart';
 import 'plane_screen.dart';
 import 'usage_screen.dart';
 
-/// The home of one bootstrapped server: the plane and the token usage, each a
-/// destination of the bottom bar.
+/// The home of one bootstrapped server: the plane, the token usage and the
+/// chat, each a destination of the bottom bar.
 ///
 /// The gateway client is obtained once, from the factory, and closed when the
-/// screen goes away. Only the selected destination is built, so a hidden tab
-/// does not poll the gateway.
+/// screen goes away. Plane and Usage are built only while selected, so a hidden
+/// tab does not poll the gateway. The chat is kept alive, so its conversation
+/// and a running answer survive a switch to another tab.
 class ServerHomeScreen extends StatefulWidget {
   const ServerHomeScreen({
     required this.profile,
@@ -47,10 +49,11 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
     super.dispose();
   }
 
-  // A list rather than two fields: a later slice adds Chat.
+  // Plane, Usage, Chat -- the order of the IndexedStack below.
   List<(IconData, String)> _destinations(AppLocalizations l10n) => [
     (Icons.dashboard_outlined, l10n.navPlane),
     (Icons.bar_chart, l10n.navUsage),
+    (Icons.chat_bubble_outline, l10n.navChat),
   ];
 
   @override
@@ -75,7 +78,14 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
             );
           }
           final c = snapshot.data!;
-          return _index == 0 ? PlaneScreen(client: c) : UsageScreen(client: c);
+          return IndexedStack(
+            index: _index,
+            children: [
+              _index == 0 ? PlaneScreen(client: c) : const SizedBox.shrink(),
+              _index == 1 ? UsageScreen(client: c) : const SizedBox.shrink(),
+              ChatScreen(client: c),
+            ],
+          );
         },
       ),
       bottomNavigationBar: NavigationBar(

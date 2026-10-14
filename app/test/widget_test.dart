@@ -224,6 +224,79 @@ void main() {
     expect(find.text('No plans'), findsOneWidget);
   });
 
+  testWidgets('the chat keeps its conversation across a tab switch', (
+    tester,
+  ) async {
+    await profiles.save(
+      const ServerProfile(
+        id: 'srv_1',
+        name: 'Deployed',
+        host: '192.0.2.10',
+        username: 'root',
+        bootstrapped: true,
+      ),
+    );
+    Future<http.Response> handler(http.Request r) async {
+      if (r.url.path == '/v1/plane/chat') {
+        return http.Response(
+          'event: session\ndata: {"session_id":"s1","model":"m1"}\n\n'
+          'event: delta\ndata: {"text":"hello there"}\n\n'
+          'event: done\ndata: {"session_id":"s1","model":"m1","cost_usd":null,"input_tokens":1,"output_tokens":2,"cache_read_tokens":0,"cache_write_tokens":0,"turns":null}\n\n',
+          200,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      }
+      final body = switch (r.url.path) {
+        '/v1/plane/plans' => {'plans': []},
+        '/v1/plane/status' => {
+          'generated_at': '2026-10-13T09:00:00Z',
+          'providers': [],
+          'services': [],
+          'paused': [],
+        },
+        '/v1/plane/actions' => {'actions': []},
+        '/v1/plane/usage' => {
+          'generated_at': '2026-10-13T09:00:00Z',
+          'models': [],
+          'roles': [],
+        },
+        _ => null,
+      };
+      if (body == null) return http.Response('{}', 404);
+      return http.Response(
+        jsonEncode(body),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+
+    await pumpApp(
+      tester,
+      gatewayClients: (profile) async => GatewayClient(
+        baseUri: profile.gatewayUri,
+        token: 't',
+        httpClient: MockClient(handler),
+      ),
+    );
+
+    await tester.tap(find.text('Deployed'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('chat-input')), 'hi');
+    await tester.tap(find.byKey(const Key('chat-send')));
+    await tester.pumpAndSettle();
+    expect(find.text('hello there'), findsOneWidget);
+
+    await tester.tap(find.text('Plane'));
+    await tester.pumpAndSettle();
+    expect(find.text('Plans'), findsOneWidget);
+
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    expect(find.text('hello there'), findsOneWidget);
+  });
+
   testWidgets('a row that is not bootstrapped does not open a home', (
     tester,
   ) async {
