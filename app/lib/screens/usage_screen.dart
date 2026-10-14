@@ -143,45 +143,44 @@ class _UsageScreenState extends State<UsageScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return FutureBuilder<PlaneUsage>(
-      future: _usage,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(describeGatewayError(l10n, snapshot.error!)),
-                TextButton(onPressed: _reload, child: Text(l10n.tryAgain)),
-              ],
-            ),
-          );
-        }
-        final usage = snapshot.data;
-        if (usage == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        return RefreshIndicator(
-          onRefresh: _reload,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: _content(context, l10n, usage),
+    return RefreshIndicator(
+      onRefresh: _reload,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ..._modelsSection(context, l10n),
+          FutureBuilder<PlaneUsage>(
+            future: _usage,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(describeGatewayError(l10n, snapshot.error!)),
+                    TextButton(onPressed: _reload, child: Text(l10n.tryAgain)),
+                  ],
+                );
+              }
+              final usage = snapshot.data;
+              if (usage == null) {
+                return const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: _content(context, l10n, usage),
+              );
+            },
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  List<Widget> _content(
-    BuildContext context,
-    AppLocalizations l10n,
-    PlaneUsage usage,
-  ) {
+  List<Widget> _modelsSection(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
-    final m = MaterialLocalizations.of(context);
-    final local = usage.generatedAt.toLocal();
-    final localTime =
-        '${m.formatShortDate(local)} ${m.formatTimeOfDay(TimeOfDay.fromDateTime(local), alwaysUse24HourFormat: true)}';
     return [
       Text(l10n.modelsTitle, style: theme.textTheme.titleMedium),
       if (_modelsError != null)
@@ -204,6 +203,20 @@ class _UsageScreenState extends State<UsageScreen> {
                   )
                 : null,
           ),
+    ];
+  }
+
+  List<Widget> _content(
+    BuildContext context,
+    AppLocalizations l10n,
+    PlaneUsage usage,
+  ) {
+    final theme = Theme.of(context);
+    final m = MaterialLocalizations.of(context);
+    final local = usage.generatedAt.toLocal();
+    final localTime =
+        '${m.formatShortDate(local)} ${m.formatTimeOfDay(TimeOfDay.fromDateTime(local), alwaysUse24HourFormat: true)}';
+    return [
       SegmentedButton<UsageWindow>(
         segments: [
           ButtonSegment(value: UsageWindow.today, label: Text(l10n.usageToday)),

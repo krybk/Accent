@@ -171,8 +171,31 @@ void main() {
         headers: {'content-type': 'application/json'},
       ),
     );
-    expect(find.text('The control plane is not answering'), findsOneWidget);
+    expect(find.text('The control plane is not answering'), findsNWidgets(2));
     expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('the switches work while the usage figures fail', (tester) async {
+    final log = <http.Request>[];
+    await _pump(tester, (r) async {
+      if (r.method == 'POST') {
+        log.add(r);
+        return _json(_opusOff);
+      }
+      if (r.url.path == '/v1/plane/models') return _json(_models);
+      return _json({'code': 'internal', 'message': 'boom'}, 500);
+    });
+    expect(_switch('opus'), findsOneWidget);
+    expect(_switch('sonnet'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    await tester.tap(_switch('opus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Switch off'));
+    await tester.pumpAndSettle();
+    expect(log, hasLength(1));
+    expect(log.single.method, 'POST');
+    expect(log.single.url.path, '/v1/plane/models/opus/disable');
+    expect(_value(tester, 'opus'), false);
   });
 
   testWidgets('renders the Models section with a switch per tier', (
