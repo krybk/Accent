@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -291,6 +292,247 @@ void main() {
     await expectLater(
       GatewayClient.forProfile(repo, profile),
       throwsA(isA<StateError>()),
+    );
+  });
+
+  group('chat', () {
+    GatewayClient streaming(
+      Stream<List<int>> Function() body, {
+      int status = 200,
+      Duration? total,
+      void Function(http.BaseRequest, Stream<List<int>>)? onRequest,
+    }) => GatewayClient(
+      baseUri: _base,
+      token: 'test-token',
+      httpClient: MockClient.streaming((request, requestBody) async {
+        onRequest?.call(request, requestBody);
+        return http.StreamedResponse(
+          body(),
+          status,
+          headers: {'content-type': 'text/event-stream'},
+        );
+      }),
+      chatTotalTimeout: total ?? const Duration(seconds: 660),
+    );
+
+    const request = PlaneChatRequest(message: 'hi', tier: 'opus');
+
+    GatewayClient fromText(List<String> parts) =>
+        streaming(() => Stream.fromIterable(parts.map(utf8.encode)));
+
+    test('full stream in chunks', () async {
+      late http.BaseRequest seen;
+      Object? sentBody;
+      final client = streaming(
+        () => Stream.fromIterable([
+          utf8.encode('event: session\ndata: {"session_id":"s1","mo'),
+          utf8.encode(
+            'del":"m1"}\n\n: keepalive\n\nevent: delta\r\ndata: {"text":"Hel"}\r\n\r\nevent: delta\nid: 7\ndata: {"text":"lo"}\n\n',
+          ),
+          utf8.encode(
+            'event: done\ndata: {"session_id":"s1","model":"m1","cost_usd":null,"input_tokens":1,"output_tokens":2,"cache_read_tokens":0,"cache_write_tokens":0,"turns":null}\n\nevent: delta\ndata: {"text":"after"}\n\n',
+          ),
+        ]),
+        onRequest: (r, b) {
+          seen = r;
+          sentBody = utf8.decodeStream(b);
+        },
+      );
+      final events = await client.chat(request).toList();
+      expect(events, hasLength(4));
+      expect(events[0], isA<PlaneChatSession>());
+      expect((events[1] as PlaneChatDelta).text, 'Hel');
+      expect((events[2] as PlaneChatDelta).text, 'lo');
+      expect(events[3], isA<PlaneChatDone>());
+      expect(seen.method, 'POST');
+      expect(seen.url.path, '/v1/plane/chat');
+      expect(seen.headers['authorization'], 'Bearer test-token');
+      expect(jsonDecode(await (sentBody as Future<String>)), {
+        'message': 'hi',
+        'session_id': null,
+        'tier': 'opus',
+      });
+    });
+
+    test('a UTF-8 sequence split across chunks arrives intact', () async {
+      final bytes = utf8.encode('event: delta\ndata: {"text":"Привет"}\n\n');
+      final cut = bytes.indexOf(0xD0) + 1;
+      final client = streaming(
+        () => Stream.fromIterable([
+          bytes.sublist(0, cut),
+          bytes.sublist(cut),
+          utf8.encode(
+            'event: error\ndata: {"code":"failed","message":"m","subtype":null,"api_error_status":null}\n\n',
+          ),
+        ]),
+      );
+      final events = await client.chat(request).toList();
+      expect((events.first as PlaneChatDelta).text, 'Привет');
+    });
+
+    test('an error event ends the stream', () async {
+      final client = fromText([
+        'event: error\ndata: {"code":"switched","message":"m","subtype":null,"api_error_status":null}\n\n',
+        'event: delta\ndata: {"text":"x"}\n\n',
+      ]);
+      final events = await client.chat(request).toList();
+      expect(events, hasLength(1));
+      expect((events.single as PlaneChatError).code, 'switched');
+    });
+
+    test('non-200 statuses become GatewayException', () async {
+      final busy = streaming(
+        () =>
+            Stream.value(utf8.encode('{"code":"chat_busy","message":"busy"}')),
+        status: 429,
+      );
+      await expectLater(
+        busy.chat(request).toList(),
+        throwsA(
+          isA<GatewayException>()
+              .having((e) => e.statusCode, 'statusCode', 429)
+              .having((e) => e.code, 'code', 'chat_busy'),
+        ),
+      );
+      final topUp = streaming(
+        () => Stream.value(utf8.encode('{"code":"x","message":"y"}')),
+        status: 402,
+      );
+      await expectLater(
+        topUp.chat(request).toList(),
+        throwsA(
+          isA<GatewayException>()
+              .having((e) => e.statusCode, 'statusCode', 402)
+              .having(
+                (e) => describeGatewayError(l10n, e),
+                'text',
+                l10n.gatewayErrorTopUp,
+              ),
+        ),
+      );
+    });
+
+    test('a stream closing without done is unreachable', () async {
+      final client = fromText(['event: delta\ndata: {"text":"x"}\n\n']);
+      await expectLater(
+        client.chat(request).toList(),
+        throwsA(
+          isA<GatewayException>().having((e) => e.code, 'code', 'unreachable'),
+        ),
+      );
+    });
+
+    test('an unknown event is skipped', () async {
+      final client = fromText([
+        'event: ping\ndata: {"a":1}\n\n',
+        'event: delta\ndata: {"text":"x"}\n\n',
+        'event: done\ndata: {"session_id":"s","model":"m","cost_usd":0.5,"input_tokens":1,"output_tokens":2,"cache_read_tokens":0,"cache_write_tokens":0,"turns":1}\n\n',
+      ]);
+      final events = await client.chat(request).toList();
+      expect(events, hasLength(2));
+      expect(events.first, isA<PlaneChatDelta>());
+    });
+
+    test('a stalled stream times out', () async {
+      final controller = StreamController<List<int>>();
+      controller.add(
+        utf8.encode(
+          'event: session\ndata: {"session_id":"s1","model":"m1"}\n\n',
+        ),
+      );
+      final client = streaming(
+        () => controller.stream,
+        total: const Duration(milliseconds: 200),
+      );
+      await expectLater(
+        client.chat(request).toList(),
+        throwsA(
+          isA<GatewayException>().having((e) => e.code, 'code', 'timeout'),
+        ),
+      );
+    });
+
+    test('non-JSON data is bad_stream', () async {
+      final client = fromText(['event: delta\ndata: not json\n\n']);
+      await expectLater(
+        client.chat(request).toList(),
+        throwsA(
+          isA<GatewayException>().having((e) => e.code, 'code', 'bad_stream'),
+        ),
+      );
+    });
+  });
+
+  test('postGuidance', () async {
+    late http.Request seen;
+    final client = _client((request) async {
+      seen = request;
+      return http.Response(
+        jsonEncode({'plan_id': 'p1', 'comment_url': 'https://example.com/c/1'}),
+        201,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final result = await client.postGuidance('p1', 'do X');
+    expect(result.commentUrl, 'https://example.com/c/1');
+    expect(seen.method, 'POST');
+    expect(seen.url.path, '/v1/plane/plans/p1/guidance');
+    expect(jsonDecode(seen.body), {'text': 'do X'});
+
+    final rejecting = _client(
+      (_) async =>
+          http.Response('{"code":"looks_like_credential","message":"no"}', 400),
+    );
+    await expectLater(
+      rejecting.postGuidance('p1', 'secret'),
+      throwsA(
+        isA<GatewayException>()
+            .having((e) => e.statusCode, 'statusCode', 400)
+            .having((e) => e.code, 'code', 'looks_like_credential'),
+      ),
+    );
+  });
+
+  test('model switches', () async {
+    const list = {
+      'models': [
+        {
+          'tier': 'opus',
+          'model': 'model-a',
+          'enabled': true,
+          'stand_in': null,
+          'stand_in_model': null,
+          'until': null,
+          'reason': null,
+        },
+      ],
+    };
+    final seen = <http.Request>[];
+    final client = _client((request) async {
+      seen.add(request);
+      return _json(list);
+    });
+    expect((await client.planeModels()).models.single.tier, 'opus');
+    await client.disableModel('opus');
+    await client.enableModel('opus');
+    expect(seen.map((r) => '${r.method} ${r.url.path}'), [
+      'GET /v1/plane/models',
+      'POST /v1/plane/models/opus/disable',
+      'POST /v1/plane/models/opus/enable',
+    ]);
+    expect(seen[1].body, isEmpty);
+    expect(seen[2].body, isEmpty);
+
+    final last = _client(
+      (_) async => http.Response('{"code":"last_model","message":"last"}', 409),
+    );
+    await expectLater(
+      last.disableModel('opus'),
+      throwsA(
+        isA<GatewayException>()
+            .having((e) => e.statusCode, 'statusCode', 409)
+            .having((e) => e.code, 'code', 'last_model'),
+      ),
     );
   });
 }

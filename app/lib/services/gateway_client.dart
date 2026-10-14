@@ -31,6 +31,8 @@ class GatewayClient {
     required Uri baseUri,
     required String token,
     required http.Client httpClient,
+    this.chatHeaderTimeout = const Duration(seconds: 20),
+    this.chatTotalTimeout = const Duration(seconds: 660),
   }) : _baseUri = baseUri,
        _token = token,
        _http = httpClient;
@@ -38,6 +40,8 @@ class GatewayClient {
   final Uri _baseUri;
   final String _token;
   final http.Client _http;
+  final Duration chatHeaderTimeout;
+  final Duration chatTotalTimeout;
 
   Future<PlaneUsage> planeUsage() async => PlaneUsage.fromJson(
     await _send('GET', '/v1/plane/usage', const Duration(seconds: 20)),
@@ -65,6 +69,173 @@ class GatewayClient {
           body: jsonEncode(request.toJson()),
         ),
       );
+
+  Future<PlaneGuidanceResult> postGuidance(String planId, String text) async =>
+      PlaneGuidanceResult.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/plans/${Uri.encodeComponent(planId)}/guidance',
+          const Duration(seconds: 30),
+          body: jsonEncode(PlaneGuidanceRequest(text: text).toJson()),
+        ),
+      );
+
+  Future<PlaneModelSwitchList> planeModels() async =>
+      PlaneModelSwitchList.fromJson(
+        await _send('GET', '/v1/plane/models', const Duration(seconds: 20)),
+      );
+
+  Future<PlaneModelSwitchList> disableModel(String tier) async =>
+      PlaneModelSwitchList.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/models/${Uri.encodeComponent(tier)}/disable',
+          const Duration(seconds: 60),
+        ),
+      );
+
+  Future<PlaneModelSwitchList> enableModel(String tier) async =>
+      PlaneModelSwitchList.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/models/${Uri.encodeComponent(tier)}/enable',
+          const Duration(seconds: 60),
+        ),
+      );
+
+  /// Streams the answer to a chat message as server-sent events. Ends after
+  /// the first `done` or `error` event.
+  Stream<PlaneChatEvent> chat(PlaneChatRequest r) async* {
+    final request =
+        http.Request('POST', _baseUri.replace(path: '/v1/plane/chat'))
+          ..headers['authorization'] = 'Bearer $_token'
+          ..headers['content-type'] = 'application/json'
+          ..headers['accept'] = 'text/event-stream'
+          ..body = jsonEncode(r.toJson());
+    final stopwatch = Stopwatch()..start();
+    final http.StreamedResponse streamed;
+    try {
+      streamed = await _http.send(request).timeout(chatHeaderTimeout);
+    } on TimeoutException catch (error) {
+      throw GatewayException(0, 'unreachable', '$error');
+    } on SocketException catch (error) {
+      throw GatewayException(0, 'unreachable', '$error');
+    } on HandshakeException catch (error) {
+      throw GatewayException(0, 'unreachable', '$error');
+    } on TlsException catch (error) {
+      throw GatewayException(0, 'unreachable', '$error');
+    } on http.ClientException catch (error) {
+      throw GatewayException(0, 'unreachable', '$error');
+    }
+    if (streamed.statusCode != 200) {
+      final http.Response response;
+      try {
+        response = await http.Response.fromStream(
+          streamed,
+        ).timeout(chatHeaderTimeout);
+      } on TimeoutException catch (error) {
+        throw GatewayException(0, 'unreachable', '$error');
+      } on SocketException catch (error) {
+        throw GatewayException(0, 'unreachable', '$error');
+      } on HandshakeException catch (error) {
+        throw GatewayException(0, 'unreachable', '$error');
+      } on TlsException catch (error) {
+        throw GatewayException(0, 'unreachable', '$error');
+      } on http.ClientException catch (error) {
+        throw GatewayException(0, 'unreachable', '$error');
+      }
+      throw _failure(streamed.statusCode, utf8.decode(response.bodyBytes));
+    }
+    final lines = StreamIterator(
+      streamed.stream.transform(utf8.decoder).transform(const LineSplitter()),
+    );
+    try {
+      String? name;
+      final data = <String>[];
+      while (true) {
+        final remaining = chatTotalTimeout - stopwatch.elapsed;
+        if (remaining <= Duration.zero) {
+          throw GatewayException(
+            0,
+            'timeout',
+            'chat exceeded $chatTotalTimeout',
+          );
+        }
+        final bool has;
+        try {
+          has = await lines.moveNext().timeout(remaining);
+        } on TimeoutException catch (error) {
+          throw GatewayException(0, 'timeout', '$error');
+        } on SocketException catch (error) {
+          throw GatewayException(0, 'unreachable', '$error');
+        } on http.ClientException catch (error) {
+          throw GatewayException(0, 'unreachable', '$error');
+        } on HandshakeException catch (error) {
+          throw GatewayException(0, 'unreachable', '$error');
+        } on TlsException catch (error) {
+          throw GatewayException(0, 'unreachable', '$error');
+        }
+        if (!has) {
+          throw const GatewayException(
+            0,
+            'unreachable',
+            'the answer stream ended before done',
+          );
+        }
+        final line = lines.current;
+        if (line.isEmpty) {
+          final eventName = name;
+          final payload = data.join('\n');
+          final hasData = data.isNotEmpty;
+          name = null;
+          data.clear();
+          if (eventName == null || !hasData) continue;
+          if (!const {
+            'session',
+            'delta',
+            'done',
+            'error',
+          }.contains(eventName)) {
+            continue;
+          }
+          final Object? decoded;
+          try {
+            decoded = jsonDecode(payload);
+          } on FormatException catch (error) {
+            throw GatewayException(200, 'bad_stream', '$error');
+          }
+          if (decoded is! Map<String, dynamic>) {
+            throw const GatewayException(
+              200,
+              'bad_stream',
+              'an event carried no JSON object',
+            );
+          }
+          final PlaneChatEvent event;
+          try {
+            event = PlaneChatEvent.parse(eventName, decoded);
+          } on TypeError catch (error) {
+            throw GatewayException(200, 'bad_stream', '$error');
+          }
+          yield event;
+          if (event is PlaneChatDone || event is PlaneChatError) return;
+        } else if (line.startsWith(':')) {
+          continue;
+        } else if (line.startsWith('event:')) {
+          name = _sseValue(line, 'event:');
+        } else if (line.startsWith('data:')) {
+          data.add(_sseValue(line, 'data:'));
+        }
+      }
+    } finally {
+      await lines.cancel();
+    }
+  }
+
+  static String _sseValue(String line, String field) {
+    final value = line.substring(field.length);
+    return value.startsWith(' ') ? value.substring(1) : value;
+  }
 
   Future<Map<String, dynamic>> _send(
     String method,
@@ -98,21 +269,21 @@ class GatewayClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(text) as Map<String, dynamic>;
     }
+    throw _failure(response.statusCode, text);
+  }
+
+  GatewayException _failure(int statusCode, String text) {
     final ApiError apiError;
     try {
       apiError = ApiError.fromJson(jsonDecode(text) as Map<String, dynamic>);
     } catch (_) {
-      throw GatewayException(
-        response.statusCode,
-        'http_${response.statusCode}',
+      return GatewayException(
+        statusCode,
+        'http_$statusCode',
         text.length > 200 ? text.substring(0, 200) : text,
       );
     }
-    throw GatewayException(
-      response.statusCode,
-      apiError.code,
-      apiError.message,
-    );
+    return GatewayException(statusCode, apiError.code, apiError.message);
   }
 
   void close() => _http.close();

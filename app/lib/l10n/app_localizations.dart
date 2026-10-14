@@ -583,6 +583,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Storing the credentials'**
   String get bootstrapStageStoreCredentials;
+
+  /// No description provided for @navChat.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat'**
+  String get navChat;
+
+  /// No description provided for @actionCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get actionCancel;
+
+  /// No description provided for @chatInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get chatInputHint;
+
+  /// No description provided for @chatSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get chatSend;
+
+  /// No description provided for @chatNewConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation'**
+  String get chatNewConversation;
+
+  /// No description provided for @chatTierOpus.
+  ///
+  /// In en, this message translates to:
+  /// **'Opus'**
+  String get chatTierOpus;
+
+  /// No description provided for @chatTierSonnet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sonnet'**
+  String get chatTierSonnet;
+
+  /// No description provided for @chatEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask what is being done now and why'**
+  String get chatEmpty;
+
+  /// No description provided for @chatDoneCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'{model} · {input} in · {output} out'**
+  String chatDoneCaption(String model, String input, String output);
+
+  /// No description provided for @chatErrorRefused.
+  ///
+  /// In en, this message translates to:
+  /// **'The model refused: {message}'**
+  String chatErrorRefused(String message);
+
+  /// No description provided for @chatErrorBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Another chat answer is still running — wait for it to finish'**
+  String get chatErrorBusy;
+
+  /// No description provided for @chatErrorNoProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'No model provider is available for the chat'**
+  String get chatErrorNoProvider;
+
+  /// No description provided for @chatErrorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The answer took too long and was stopped'**
+  String get chatErrorTimeout;
+
+  /// No description provided for @chatErrorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The chat failed: {message}'**
+  String chatErrorFailed(String message);
+
+  /// No description provided for @chatErrorSwitched.
+  ///
+  /// In en, this message translates to:
+  /// **'The model was switched off — send again'**
+  String get chatErrorSwitched;
+
+  /// No description provided for @chatErrorTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The message is too long'**
+  String get chatErrorTooLong;
+
+  /// No description provided for @sendToPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to plan'**
+  String get sendToPlan;
+
+  /// No description provided for @sendToPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Guidance for a plan'**
+  String get sendToPlanTitle;
+
+  /// No description provided for @sendToPlanPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get sendToPlanPlan;
+
+  /// No description provided for @sendToPlanText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get sendToPlanText;
+
+  /// No description provided for @sendToPlanSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get sendToPlanSend;
+
+  /// No description provided for @sendToPlanNoPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no open plan'**
+  String get sendToPlanNoPlan;
+
+  /// No description provided for @sendToPlanSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent: {url}'**
+  String sendToPlanSent(String url);
+
+  /// No description provided for @sendToPlanCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'The text looks like a credential and was not sent'**
+  String get sendToPlanCredential;
+
+  /// No description provided for @sendToPlanNoSuchPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan no longer exists'**
+  String get sendToPlanNoSuchPlan;
+
+  /// No description provided for @sendToPlanCommentFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The server could not post the guidance'**
+  String get sendToPlanCommentFailed;
+
+  /// No description provided for @modelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get modelsTitle;
+
+  /// No description provided for @modelOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — running on {standIn} ({standInModel})'**
+  String modelOff(String standIn, String standInModel);
+
+  /// No description provided for @modelOffNoStandIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get modelOffNoStandIn;
+
+  /// No description provided for @modelOffUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'until {until}'**
+  String modelOffUntil(String until);
+
+  /// No description provided for @modelDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch {tier} off?'**
+  String modelDisableTitle(String tier);
+
+  /// No description provided for @modelDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Running work is saved and continues on the stand-in model.'**
+  String get modelDisableBody;
+
+  /// No description provided for @modelDisableConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch off'**
+  String get modelDisableConfirm;
+
+  /// No description provided for @modelErrorLastModel.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the last model that is on; it cannot be switched off'**
+  String get modelErrorLastModel;
+
+  /// No description provided for @modelErrorNoSuchTier.
+  ///
+  /// In en, this message translates to:
+  /// **'The server does not know this model'**
+  String get modelErrorNoSuchTier;
 }
 
 class _AppLocalizationsDelegate

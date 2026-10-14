@@ -128,5 +128,98 @@
   "bootstrapStageStartStack": "Starting the stack",
   "bootstrapStageAwaitHealth": "Waiting for the stack to answer",
   "bootstrapStageReadCertificate": "Reading the certificate",
-  "bootstrapStageStoreCredentials": "Storing the credentials"
+  "bootstrapStageStoreCredentials": "Storing the credentials",
+  "navChat": "Chat",
+  "actionCancel": "Cancel",
+  "chatInputHint": "Message",
+  "chatSend": "Send",
+  "chatNewConversation": "New conversation",
+  "chatTierOpus": "Opus",
+  "chatTierSonnet": "Sonnet",
+  "chatEmpty": "Ask what is being done now and why",
+  "chatDoneCaption": "{model} · {input} in · {output} out",
+  "@chatDoneCaption": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      },
+      "input": {
+        "type": "String"
+      },
+      "output": {
+        "type": "String"
+      }
+    }
+  },
+  "chatErrorRefused": "The model refused: {message}",
+  "@chatErrorRefused": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "chatErrorBusy": "Another chat answer is still running — wait for it to finish",
+  "chatErrorNoProvider": "No model provider is available for the chat",
+  "chatErrorTimeout": "The answer took too long and was stopped",
+  "chatErrorFailed": "The chat failed: {message}",
+  "@chatErrorFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "chatErrorSwitched": "The model was switched off — send again",
+  "chatErrorTooLong": "The message is too long",
+  "sendToPlan": "Send to plan",
+  "sendToPlanTitle": "Guidance for a plan",
+  "sendToPlanPlan": "Plan",
+  "sendToPlanText": "Text",
+  "sendToPlanSend": "Send",
+  "sendToPlanNoPlan": "There is no open plan",
+  "sendToPlanSent": "Sent: {url}",
+  "@sendToPlanSent": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "sendToPlanCredential": "The text looks like a credential and was not sent",
+  "sendToPlanNoSuchPlan": "This plan no longer exists",
+  "sendToPlanCommentFailed": "The server could not post the guidance",
+  "modelsTitle": "Models",
+  "modelOff": "Off — running on {standIn} ({standInModel})",
+  "@modelOff": {
+    "placeholders": {
+      "standIn": {
+        "type": "String"
+      },
+      "standInModel": {
+        "type": "String"
+      }
+    }
+  },
+  "modelOffNoStandIn": "Off",
+  "modelOffUntil": "until {until}",
+  "@modelOffUntil": {
+    "placeholders": {
+      "until": {
+        "type": "String"
+      }
+    }
+  },
+  "modelDisableTitle": "Switch {tier} off?",
+  "@modelDisableTitle": {
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "modelDisableBody": "Running work is saved and continues on the stand-in model.",
+  "modelDisableConfirm": "Switch off",
+  "modelErrorLastModel": "This is the last model that is on; it cannot be switched off",
+  "modelErrorNoSuchTier": "The server does not know this model"
 }
