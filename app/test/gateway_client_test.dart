@@ -535,4 +535,58 @@ void main() {
       ),
     );
   });
+
+  test('queue', () async {
+    const payload = {
+      'queue': [
+        {
+          'id': '11',
+          'title': 'First',
+          'status': 'running',
+          'position': 1,
+          'held': false,
+          'owner_ordered': true,
+        },
+        {
+          'id': '12',
+          'title': 'Second',
+          'status': 'waiting',
+          'position': 2,
+          'held': true,
+          'owner_ordered': false,
+        },
+      ],
+    };
+    final seen = <http.Request>[];
+    final client = _client((request) async {
+      seen.add(request);
+      return _json(payload);
+    });
+    final entries = (await client.planeQueue()).entries;
+    expect(entries.map((e) => e.id), ['11', '12']);
+    expect(entries[1].held, isTrue);
+    expect(entries[0].ownerOrdered, isTrue);
+    await client.moveInQueue('12', PlaneQueueVerb.top);
+    await client.moveInQueue('a b', PlaneQueueVerb.resume);
+    expect(seen.map((r) => '${r.method} ${r.url.path}'), [
+      'GET /v1/plane/queue',
+      'POST /v1/plane/queue/12/top',
+      'POST /v1/plane/queue/a%20b/resume',
+    ]);
+    expect(seen[1].body, isEmpty);
+    expect(seen[2].body, isEmpty);
+
+    final missing = _client(
+      (_) async =>
+          http.Response('{"code":"no_such_plan","message":"closed"}', 404),
+    );
+    await expectLater(
+      missing.moveInQueue('12', PlaneQueueVerb.up),
+      throwsA(
+        isA<GatewayException>()
+            .having((e) => e.statusCode, 'statusCode', 404)
+            .having((e) => e.code, 'code', 'no_such_plan'),
+      ),
+    );
+  });
 }
