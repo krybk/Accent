@@ -53,7 +53,11 @@ the gateway image.
 
 The app also drives the bootstrap on a progress screen, and shows the plane and
 per-model token usage through a pinned, token-authenticated gateway client.
-Still to come: the chat itself.
+The chat screen talks to a model on the server, streams the answer as it is
+written and carries the conversation on from one message to the next. Any
+message can be sent to an open plan as guidance; nothing is posted until the
+owner presses Send in that dialog. The usage screen also switches each model
+tier off and on, and work for a tier that is off runs on its stand-in.
 
 ## Releases
 

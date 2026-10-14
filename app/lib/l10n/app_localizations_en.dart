@@ -269,4 +269,129 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bootstrapStageStoreCredentials => 'Storing the credentials';
+
+  @override
+  String get navChat => 'Chat';
+
+  @override
+  String get actionCancel => 'Cancel';
+
+  @override
+  String get chatInputHint => 'Message';
+
+  @override
+  String get chatSend => 'Send';
+
+  @override
+  String get chatNewConversation => 'New conversation';
+
+  @override
+  String get chatTierOpus => 'Opus';
+
+  @override
+  String get chatTierSonnet => 'Sonnet';
+
+  @override
+  String get chatEmpty => 'Ask what is being done now and why';
+
+  @override
+  String chatDoneCaption(String model, String input, String output) {
+    return '$model · $input in · $output out';
+  }
+
+  @override
+  String chatErrorRefused(String message) {
+    return 'The model refused: $message';
+  }
+
+  @override
+  String get chatErrorBusy =>
+      'Another chat answer is still running — wait for it to finish';
+
+  @override
+  String get chatErrorNoProvider =>
+      'No model provider is available for the chat';
+
+  @override
+  String get chatErrorTimeout => 'The answer took too long and was stopped';
+
+  @override
+  String chatErrorFailed(String message) {
+    return 'The chat failed: $message';
+  }
+
+  @override
+  String get chatErrorSwitched => 'The model was switched off — send again';
+
+  @override
+  String get chatErrorTooLong => 'The message is too long';
+
+  @override
+  String get sendToPlan => 'Send to plan';
+
+  @override
+  String get sendToPlanTitle => 'Guidance for a plan';
+
+  @override
+  String get sendToPlanPlan => 'Plan';
+
+  @override
+  String get sendToPlanText => 'Text';
+
+  @override
+  String get sendToPlanSend => 'Send';
+
+  @override
+  String get sendToPlanNoPlan => 'There is no open plan';
+
+  @override
+  String sendToPlanSent(String url) {
+    return 'Sent: $url';
+  }
+
+  @override
+  String get sendToPlanCredential =>
+      'The text looks like a credential and was not sent';
+
+  @override
+  String get sendToPlanNoSuchPlan => 'This plan no longer exists';
+
+  @override
+  String get sendToPlanCommentFailed =>
+      'The server could not post the guidance';
+
+  @override
+  String get modelsTitle => 'Models';
+
+  @override
+  String modelOff(String standIn, String standInModel) {
+    return 'Off — running on $standIn ($standInModel)';
+  }
+
+  @override
+  String get modelOffNoStandIn => 'Off';
+
+  @override
+  String modelOffUntil(String until) {
+    return 'until $until';
+  }
+
+  @override
+  String modelDisableTitle(String tier) {
+    return 'Switch $tier off?';
+  }
+
+  @override
+  String get modelDisableBody =>
+      'Running work is saved and continues on the stand-in model.';
+
+  @override
+  String get modelDisableConfirm => 'Switch off';
+
+  @override
+  String get modelErrorLastModel =>
+      'This is the last model that is on; it cannot be switched off';
+
+  @override
+  String get modelErrorNoSuchTier => 'The server does not know this model';
 }
