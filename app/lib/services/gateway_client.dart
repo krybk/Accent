@@ -103,6 +103,19 @@ class GatewayClient {
         ),
       );
 
+  Future<PlaneQueue> planeQueue() async => PlaneQueue.fromJson(
+    await _send('GET', '/v1/plane/queue', const Duration(seconds: 20)),
+  );
+
+  Future<PlaneQueue> moveInQueue(String planId, PlaneQueueVerb verb) async =>
+      PlaneQueue.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/queue/${Uri.encodeComponent(planId)}/${verb.name}',
+          const Duration(seconds: 60),
+        ),
+      );
+
   /// Streams the answer to a chat message as server-sent events. Ends after
   /// the first `done` or `error` event.
   Stream<PlaneChatEvent> chat(PlaneChatRequest r) async* {
