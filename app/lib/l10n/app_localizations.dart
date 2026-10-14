@@ -793,6 +793,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The server does not know this model'**
   String get modelErrorNoSuchTier;
+
+  /// No description provided for @navQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get navQueue;
+
+  /// No description provided for @queueOrderNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans are taken in this order.'**
+  String get queueOrderNote;
+
+  /// No description provided for @queueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No open plans'**
+  String get queueEmpty;
+
+  /// No description provided for @queueHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'On hold'**
+  String get queueHeld;
+
+  /// No description provided for @queueMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get queueMoveUp;
+
+  /// No description provided for @queueMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get queueMoveDown;
+
+  /// No description provided for @queueMoveTop.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to top'**
+  String get queueMoveTop;
+
+  /// No description provided for @queueMoveBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to end'**
+  String get queueMoveBottom;
+
+  /// No description provided for @queueHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Put on hold'**
+  String get queueHold;
+
+  /// No description provided for @queueResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to queue'**
+  String get queueResume;
+
+  /// No description provided for @queueErrorNoSuchPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan is no longer open'**
+  String get queueErrorNoSuchPlan;
 }
 
 class _AppLocalizationsDelegate

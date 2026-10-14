@@ -392,4 +392,37 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get modelErrorNoSuchTier => 'Сервер не знает эту модель';
+
+  @override
+  String get navQueue => 'Очередь';
+
+  @override
+  String get queueOrderNote => 'Планы берутся в работу в этом порядке.';
+
+  @override
+  String get queueEmpty => 'Открытых планов нет';
+
+  @override
+  String get queueHeld => 'Отложен';
+
+  @override
+  String get queueMoveUp => 'Поднять';
+
+  @override
+  String get queueMoveDown => 'Опустить';
+
+  @override
+  String get queueMoveTop => 'В начало';
+
+  @override
+  String get queueMoveBottom => 'В конец';
+
+  @override
+  String get queueHold => 'Отложить';
+
+  @override
+  String get queueResume => 'Вернуть в очередь';
+
+  @override
+  String get queueErrorNoSuchPlan => 'Этот план уже закрыт';
 }

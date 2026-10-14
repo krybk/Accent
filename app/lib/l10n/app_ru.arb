@@ -115,5 +115,16 @@
   "modelDisableBody": "Идущая работа сохраняется и продолжается на замещающей модели.",
   "modelDisableConfirm": "Выключить",
   "modelErrorLastModel": "Это последняя включённая модель, её нельзя выключить",
-  "modelErrorNoSuchTier": "Сервер не знает эту модель"
+  "modelErrorNoSuchTier": "Сервер не знает эту модель",
+  "navQueue": "Очередь",
+  "queueOrderNote": "Планы берутся в работу в этом порядке.",
+  "queueEmpty": "Открытых планов нет",
+  "queueHeld": "Отложен",
+  "queueMoveUp": "Поднять",
+  "queueMoveDown": "Опустить",
+  "queueMoveTop": "В начало",
+  "queueMoveBottom": "В конец",
+  "queueHold": "Отложить",
+  "queueResume": "Вернуть в очередь",
+  "queueErrorNoSuchPlan": "Этот план уже закрыт"
 }
