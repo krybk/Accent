@@ -445,3 +445,245 @@ class PlaneActionResult {
     'output': output,
   };
 }
+
+/// The body of `POST /v1/plane/chat`.
+class PlaneChatRequest {
+  const PlaneChatRequest({
+    required this.message,
+    this.sessionId,
+    required this.tier,
+  });
+
+  final String message;
+  final String? sessionId;
+  final String tier;
+
+  factory PlaneChatRequest.fromJson(Map<String, dynamic> json) =>
+      PlaneChatRequest(
+        message: json['message'] as String,
+        sessionId: json['session_id'] as String?,
+        tier: json['tier'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'message': message,
+    'session_id': sessionId,
+    'tier': tier,
+  };
+}
+
+/// One server-sent event of the `POST /v1/plane/chat` answer stream.
+sealed class PlaneChatEvent {
+  const PlaneChatEvent();
+
+  Map<String, dynamic> toJson();
+
+  static PlaneChatEvent parse(String event, Map<String, dynamic> data) =>
+      switch (event) {
+        'session' => PlaneChatSession.fromJson(data),
+        'delta' => PlaneChatDelta.fromJson(data),
+        'done' => PlaneChatDone.fromJson(data),
+        'error' => PlaneChatError.fromJson(data),
+        _ => throw FormatException('unknown chat event: $event'),
+      };
+}
+
+/// The `session` chat event: which session and model answer.
+final class PlaneChatSession extends PlaneChatEvent {
+  const PlaneChatSession({required this.sessionId, required this.model});
+
+  final String sessionId;
+  final String model;
+
+  factory PlaneChatSession.fromJson(Map<String, dynamic> json) =>
+      PlaneChatSession(
+        sessionId: json['session_id'] as String,
+        model: json['model'] as String,
+      );
+
+  @override
+  Map<String, dynamic> toJson() => {'session_id': sessionId, 'model': model};
+}
+
+/// The `delta` chat event: a piece of the answer text.
+final class PlaneChatDelta extends PlaneChatEvent {
+  const PlaneChatDelta({required this.text});
+
+  final String text;
+
+  factory PlaneChatDelta.fromJson(Map<String, dynamic> json) =>
+      PlaneChatDelta(text: json['text'] as String);
+
+  @override
+  Map<String, dynamic> toJson() => {'text': text};
+}
+
+/// The `done` chat event: the answer is complete, with its cost.
+final class PlaneChatDone extends PlaneChatEvent {
+  const PlaneChatDone({
+    required this.sessionId,
+    required this.model,
+    required this.costUsd,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cacheReadTokens,
+    required this.cacheWriteTokens,
+    required this.turns,
+  });
+
+  final String sessionId;
+  final String model;
+  final double? costUsd;
+  final int inputTokens;
+  final int outputTokens;
+  final int cacheReadTokens;
+  final int cacheWriteTokens;
+  final int? turns;
+
+  factory PlaneChatDone.fromJson(Map<String, dynamic> json) => PlaneChatDone(
+    sessionId: json['session_id'] as String,
+    model: json['model'] as String,
+    costUsd: (json['cost_usd'] as num?)?.toDouble(),
+    inputTokens: json['input_tokens'] as int,
+    outputTokens: json['output_tokens'] as int,
+    cacheReadTokens: json['cache_read_tokens'] as int,
+    cacheWriteTokens: json['cache_write_tokens'] as int,
+    turns: json['turns'] as int?,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'session_id': sessionId,
+    'model': model,
+    'cost_usd': costUsd,
+    'input_tokens': inputTokens,
+    'output_tokens': outputTokens,
+    'cache_read_tokens': cacheReadTokens,
+    'cache_write_tokens': cacheWriteTokens,
+    'turns': turns,
+  };
+}
+
+/// The `error` chat event; [code] is refused, timeout, failed or switched.
+final class PlaneChatError extends PlaneChatEvent {
+  const PlaneChatError({
+    required this.code,
+    required this.message,
+    required this.subtype,
+    required this.apiErrorStatus,
+  });
+
+  final String code;
+  final String message;
+  final String? subtype;
+  final int? apiErrorStatus;
+
+  factory PlaneChatError.fromJson(Map<String, dynamic> json) => PlaneChatError(
+    code: json['code'] as String,
+    message: json['message'] as String,
+    subtype: json['subtype'] as String?,
+    apiErrorStatus: json['api_error_status'] as int?,
+  );
+
+  @override
+  Map<String, dynamic> toJson() => {
+    'code': code,
+    'message': message,
+    'subtype': subtype,
+    'api_error_status': apiErrorStatus,
+  };
+}
+
+/// The body of `POST /v1/plane/plans/{id}/guidance`.
+class PlaneGuidanceRequest {
+  const PlaneGuidanceRequest({required this.text});
+
+  final String text;
+
+  factory PlaneGuidanceRequest.fromJson(Map<String, dynamic> json) =>
+      PlaneGuidanceRequest(text: json['text'] as String);
+
+  Map<String, dynamic> toJson() => {'text': text};
+}
+
+/// The response of `POST /v1/plane/plans/{id}/guidance`.
+class PlaneGuidanceResult {
+  const PlaneGuidanceResult({required this.planId, required this.commentUrl});
+
+  final String planId;
+  final String commentUrl;
+
+  factory PlaneGuidanceResult.fromJson(Map<String, dynamic> json) =>
+      PlaneGuidanceResult(
+        planId: json['plan_id'] as String,
+        commentUrl: json['comment_url'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'plan_id': planId,
+    'comment_url': commentUrl,
+  };
+}
+
+/// One model tier's switch state in `GET /v1/plane/models`.
+class PlaneModelSwitch {
+  const PlaneModelSwitch({
+    required this.tier,
+    required this.model,
+    required this.enabled,
+    required this.standIn,
+    required this.standInModel,
+    required this.until,
+    required this.reason,
+  });
+
+  final String tier;
+  final String model;
+  final bool enabled;
+  final String? standIn;
+  final String? standInModel;
+  final DateTime? until;
+  final String? reason;
+
+  factory PlaneModelSwitch.fromJson(Map<String, dynamic> json) =>
+      PlaneModelSwitch(
+        tier: json['tier'] as String,
+        model: json['model'] as String,
+        enabled: json['enabled'] as bool,
+        standIn: json['stand_in'] as String?,
+        standInModel: json['stand_in_model'] as String?,
+        until: json['until'] == null
+            ? null
+            : DateTime.parse(json['until'] as String),
+        reason: json['reason'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'tier': tier,
+    'model': model,
+    'enabled': enabled,
+    'stand_in': standIn,
+    'stand_in_model': standInModel,
+    'until': until?.toUtc().toIso8601String(),
+    'reason': reason,
+  };
+}
+
+/// The response of `GET /v1/plane/models` and of the disable/enable calls.
+class PlaneModelSwitchList {
+  const PlaneModelSwitchList({required this.models});
+
+  final List<PlaneModelSwitch> models;
+
+  factory PlaneModelSwitchList.fromJson(Map<String, dynamic> json) =>
+      PlaneModelSwitchList(
+        models: [
+          for (final m in json['models'] as List<dynamic>)
+            PlaneModelSwitch.fromJson(m as Map<String, dynamic>),
+        ],
+      );
+
+  Map<String, dynamic> toJson() => {
+    'models': [for (final m in models) m.toJson()],
+  };
+}
