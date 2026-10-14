@@ -46,6 +46,28 @@ final _fixture = {
   ],
 };
 
+Map<String, dynamic> _sw(
+  String tier,
+  String model, {
+  bool enabled = true,
+  String? standIn,
+  String? standInModel,
+  String? until,
+  String? reason,
+}) => {
+  'tier': tier,
+  'model': model,
+  'enabled': enabled,
+  'stand_in': standIn,
+  'stand_in_model': standInModel,
+  'until': until,
+  'reason': reason,
+};
+
+final _models = {
+  'models': [_sw('opus', 'model-a'), _sw('sonnet', 'model-b')],
+};
+
 Future<void> _pump(
   WidgetTester tester,
   Future<http.Response> Function(http.Request) handler,
@@ -69,11 +91,47 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
-Future<http.Response> _ok(http.Request r) async => http.Response(
-  jsonEncode(_fixture),
-  200,
-  headers: {'content-type': 'application/json'},
-);
+Future<http.Response> _json(Object body, [int status = 200]) async =>
+    http.Response(
+      jsonEncode(body),
+      status,
+      headers: {'content-type': 'application/json'},
+    );
+
+Future<http.Response> _ok(http.Request r) async =>
+    _json(r.url.path == '/v1/plane/models' ? _models : _fixture);
+
+Future<http.Response> Function(http.Request) _recording(
+  List<http.Request> log, {
+  Map<String, dynamic>? models,
+  Future<http.Response> Function(http.Request)? onPost,
+}) => (r) async {
+  if (r.method == 'POST') {
+    log.add(r);
+    if (onPost != null) return onPost(r);
+  }
+  if (r.url.path == '/v1/plane/models') return _json(models ?? _models);
+  return _json(_fixture);
+};
+
+Finder _switch(String tier) => find.byKey(Key('model-switch-$tier'));
+
+bool _value(WidgetTester tester, String tier) =>
+    tester.widget<SwitchListTile>(_switch(tier)).value;
+
+final _opusOff = {
+  'models': [
+    _sw(
+      'opus',
+      'model-a',
+      enabled: false,
+      standIn: 'sonnet',
+      standInModel: 'model-b',
+      reason: 'owner',
+    ),
+    _sw('sonnet', 'model-b'),
+  ],
+};
 
 void main() {
   group('formatTokens', () {
@@ -115,5 +173,121 @@ void main() {
     );
     expect(find.text('The control plane is not answering'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
+  });
+
+  testWidgets('renders the Models section with a switch per tier', (
+    tester,
+  ) async {
+    await _pump(tester, _ok);
+    expect(find.text('Models'), findsOneWidget);
+    expect(find.text('opus'), findsOneWidget);
+    expect(find.text('model-a'), findsOneWidget);
+    expect(find.byType(SwitchListTile), findsNWidgets(2));
+  });
+
+  testWidgets('switching a tier off confirms, posts and replaces the list', (
+    tester,
+  ) async {
+    final log = <http.Request>[];
+    await _pump(tester, _recording(log, onPost: (r) => _json(_opusOff)));
+    await tester.tap(_switch('opus'));
+    await tester.pumpAndSettle();
+    expect(find.text('Switch opus off?'), findsOneWidget);
+    await tester.tap(find.text('Switch off'));
+    await tester.pumpAndSettle();
+    expect(log, hasLength(1));
+    expect(log.single.url.path, '/v1/plane/models/opus/disable');
+    expect(
+      find.textContaining('Off — running on sonnet (model-b)'),
+      findsOneWidget,
+    );
+    expect(_value(tester, 'opus'), false);
+  });
+
+  testWidgets('cancelling the dialog posts nothing', (tester) async {
+    final log = <http.Request>[];
+    await _pump(tester, _recording(log));
+    await tester.tap(_switch('opus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(log, isEmpty);
+    expect(_value(tester, 'opus'), true);
+  });
+
+  testWidgets('the last model cannot be switched off', (tester) async {
+    final log = <http.Request>[];
+    await _pump(
+      tester,
+      _recording(
+        log,
+        onPost: (r) => _json({'code': 'last_model', 'message': 'x'}, 409),
+      ),
+    );
+    await tester.tap(_switch('opus'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Switch off'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('This is the last model that is on; it cannot be switched off'),
+      findsOneWidget,
+    );
+    expect(_value(tester, 'opus'), true);
+  });
+
+  testWidgets('a disabled tier shows its until time', (tester) async {
+    final log = <http.Request>[];
+    await _pump(
+      tester,
+      _recording(
+        log,
+        models: {
+          'models': [
+            _sw(
+              'opus',
+              'model-a',
+              enabled: false,
+              standIn: 'sonnet',
+              standInModel: 'model-b',
+              until: '2026-10-14T18:00:00.000Z',
+            ),
+            _sw('sonnet', 'model-b'),
+          ],
+        },
+      ),
+    );
+    expect(find.textContaining('until '), findsOneWidget);
+  });
+
+  testWidgets('switching a disabled tier on posts enable without a dialog', (
+    tester,
+  ) async {
+    final log = <http.Request>[];
+    await _pump(
+      tester,
+      _recording(log, models: _opusOff, onPost: (r) => _json(_models)),
+    );
+    await tester.tap(_switch('opus'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(log, hasLength(1));
+    expect(log.single.url.path, '/v1/plane/models/opus/enable');
+    expect(_value(tester, 'opus'), true);
+  });
+
+  testWidgets('a models failure leaves the usage figures in place', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      (r) => r.url.path == '/v1/plane/models'
+          ? _json({'code': 'plane_not_configured', 'message': 'x'}, 404)
+          : _json(_fixture),
+    );
+    expect(find.text('Steps: 42'), findsOneWidget);
+    expect(
+      find.text('No control plane is configured on this server'),
+      findsOneWidget,
+    );
   });
 }
