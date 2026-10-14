@@ -270,4 +270,126 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get bootstrapStageStoreCredentials => 'Сохранение учётных данных';
+
+  @override
+  String get navChat => 'Чат';
+
+  @override
+  String get actionCancel => 'Отмена';
+
+  @override
+  String get chatInputHint => 'Сообщение';
+
+  @override
+  String get chatSend => 'Отправить';
+
+  @override
+  String get chatNewConversation => 'Новый разговор';
+
+  @override
+  String get chatTierOpus => 'Opus';
+
+  @override
+  String get chatTierSonnet => 'Sonnet';
+
+  @override
+  String get chatEmpty => 'Спросите, что сейчас делается и почему';
+
+  @override
+  String chatDoneCaption(String model, String input, String output) {
+    return '$model · $input вход · $output выход';
+  }
+
+  @override
+  String chatErrorRefused(String message) {
+    return 'Модель отказала: $message';
+  }
+
+  @override
+  String get chatErrorBusy =>
+      'Другой ответ чата ещё идёт — дождитесь его окончания';
+
+  @override
+  String get chatErrorNoProvider => 'Для чата нет доступного провайдера модели';
+
+  @override
+  String get chatErrorTimeout => 'Ответ шёл слишком долго и был остановлен';
+
+  @override
+  String chatErrorFailed(String message) {
+    return 'Чат завершился ошибкой: $message';
+  }
+
+  @override
+  String get chatErrorSwitched => 'Модель была отключена — отправьте ещё раз';
+
+  @override
+  String get chatErrorTooLong => 'Сообщение слишком длинное';
+
+  @override
+  String get sendToPlan => 'Отправить в план';
+
+  @override
+  String get sendToPlanTitle => 'Указание плану';
+
+  @override
+  String get sendToPlanPlan => 'План';
+
+  @override
+  String get sendToPlanText => 'Текст';
+
+  @override
+  String get sendToPlanSend => 'Отправить';
+
+  @override
+  String get sendToPlanNoPlan => 'Нет открытого плана';
+
+  @override
+  String sendToPlanSent(String url) {
+    return 'Отправлено: $url';
+  }
+
+  @override
+  String get sendToPlanCredential => 'Текст похож на секрет и не был отправлен';
+
+  @override
+  String get sendToPlanNoSuchPlan => 'Этого плана больше нет';
+
+  @override
+  String get sendToPlanCommentFailed => 'Сервер не смог опубликовать указание';
+
+  @override
+  String get modelsTitle => 'Модели';
+
+  @override
+  String modelOff(String standIn, String standInModel) {
+    return 'Выключена — работает $standIn ($standInModel)';
+  }
+
+  @override
+  String get modelOffNoStandIn => 'Выключена';
+
+  @override
+  String modelOffUntil(String until) {
+    return 'до $until';
+  }
+
+  @override
+  String modelDisableTitle(String tier) {
+    return 'Выключить $tier?';
+  }
+
+  @override
+  String get modelDisableBody =>
+      'Идущая работа сохраняется и продолжается на замещающей модели.';
+
+  @override
+  String get modelDisableConfirm => 'Выключить';
+
+  @override
+  String get modelErrorLastModel =>
+      'Это последняя включённая модель, её нельзя выключить';
+
+  @override
+  String get modelErrorNoSuchTier => 'Сервер не знает эту модель';
 }
