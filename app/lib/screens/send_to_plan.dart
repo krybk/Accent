@@ -1,7 +1,8 @@
 import 'package:accent_protocol/protocol.dart';
-import 'package:accent/l10n/app_localizations.dart';
-import 'package:accent/services/gateway_client.dart';
 import 'package:flutter/material.dart';
+
+import '../l10n/app_localizations.dart';
+import '../services/gateway_client.dart';
 
 const _maxGuidanceLength = 8000;
 
