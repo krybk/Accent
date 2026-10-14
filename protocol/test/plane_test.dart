@@ -268,4 +268,98 @@ void main() {
     expect(again.exitCode, 2);
     expect(again.output, 'done\n');
   });
+
+  test('PlaneChatRequest round-trips', () {
+    for (final id in [null, '0b6f0c1e-1d2a-4c3b-9e8f-7a6b5c4d3e2f']) {
+      final json = {'message': 'hi', 'session_id': id, 'tier': 'opus'};
+      expect(PlaneChatRequest.fromJson(json).toJson(), json);
+    }
+    expect(
+      const PlaneChatRequest(
+        message: 'hi',
+        tier: 'opus',
+      ).toJson().containsKey('session_id'),
+      isTrue,
+    );
+  });
+
+  test('PlaneChatEvent.parse', () {
+    final session = PlaneChatEvent.parse('session', {
+      'session_id': 's1',
+      'model': 'm1',
+    });
+    expect(session, isA<PlaneChatSession>());
+    expect((session as PlaneChatSession).sessionId, 's1');
+    expect(session.model, 'm1');
+
+    final delta = PlaneChatEvent.parse('delta', {'text': 'Hel'});
+    expect(delta, isA<PlaneChatDelta>());
+    expect((delta as PlaneChatDelta).text, 'Hel');
+
+    for (final extra in [
+      {'cost_usd': 0.25, 'turns': 2},
+      {'cost_usd': null, 'turns': null},
+    ]) {
+      final json = {
+        'session_id': 's1',
+        'model': 'm1',
+        'cost_usd': extra['cost_usd'],
+        'input_tokens': 10,
+        'output_tokens': 20,
+        'cache_read_tokens': 30,
+        'cache_write_tokens': 40,
+        'turns': extra['turns'],
+      };
+      final done = PlaneChatEvent.parse('done', json);
+      expect(done, isA<PlaneChatDone>());
+      expect(done.toJson(), json);
+    }
+
+    final errorJson = {
+      'code': 'refused',
+      'message': 'limit',
+      'subtype': null,
+      'api_error_status': 429,
+    };
+    final error = PlaneChatEvent.parse('error', errorJson);
+    expect(error, isA<PlaneChatError>());
+    expect(error.toJson(), errorJson);
+
+    expect(() => PlaneChatEvent.parse('ping', {}), throwsFormatException);
+  });
+
+  test('guidance types round-trip', () {
+    final request = {'text': 'do X'};
+    expect(PlaneGuidanceRequest.fromJson(request).toJson(), request);
+    final result = {'plan_id': 'p1', 'comment_url': 'https://example.com/c/1'};
+    expect(PlaneGuidanceResult.fromJson(result).toJson(), result);
+  });
+
+  test('PlaneModelSwitchList round-trips', () {
+    final json = {
+      'models': [
+        {
+          'tier': 'opus',
+          'model': 'model-a',
+          'enabled': true,
+          'stand_in': null,
+          'stand_in_model': null,
+          'until': null,
+          'reason': null,
+        },
+        {
+          'tier': 'sonnet',
+          'model': 'model-b',
+          'enabled': false,
+          'stand_in': 'opus',
+          'stand_in_model': 'model-a',
+          'until': '2026-10-14T18:00:00.000Z',
+          'reason': 'owner',
+        },
+      ],
+    };
+    final list = PlaneModelSwitchList.fromJson(json);
+    expect(list.toJson(), json);
+    expect(list.models[1].until, DateTime.utc(2026, 10, 14, 18));
+  });
 }
