@@ -15,9 +15,13 @@ Response _jsonError(int status, String code, String message) => Response(
 );
 
 /// Handler mounted at `/v1/plane/`; [socketPath] is null when no plane exists.
+/// A socket path whose file is missing is treated like null.
 Handler planeProxy(String? socketPath) {
   return (Request request) async {
-    if (socketPath == null) {
+    // A server with no plane has no socket file: that is 'not configured', not 'unavailable'.
+    if (socketPath == null ||
+        FileSystemEntity.typeSync(socketPath, followLinks: false) ==
+            FileSystemEntityType.notFound) {
       return _jsonError(
         404,
         'plane_not_configured',

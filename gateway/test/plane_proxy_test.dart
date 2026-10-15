@@ -133,7 +133,17 @@ void main() {
     expect(json['code'], 'plane_not_configured');
   });
 
+  test('a missing socket path is plane_not_configured', () async {
+    final response = await proxy('${dir.path}/absent.sock')(
+      Request('GET', Uri.parse('http://localhost/v1/plane/usage')),
+    );
+    expect(response.statusCode, 404);
+    final json = jsonDecode(await response.readAsString()) as Map;
+    expect(json['code'], 'plane_not_configured');
+  });
+
   test('503 when the socket is unreachable', () async {
+    File('${dir.path}/missing.sock').writeAsStringSync('');
     final response = await proxy('${dir.path}/missing.sock')(
       Request('GET', Uri.parse('http://localhost/v1/plane/usage')),
     );
