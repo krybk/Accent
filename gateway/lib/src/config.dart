@@ -3,6 +3,9 @@ library;
 
 import 'package:accent_protocol/protocol.dart';
 
+/// Directory of per-device token files; inside the gateway-data volume.
+const defaultTokensDir = '/var/lib/accent/tokens.d';
+
 class GatewayConfig {
   const GatewayConfig({
     required this.token,
@@ -10,6 +13,7 @@ class GatewayConfig {
     required this.litellmKey,
     this.port = 8080,
     this.planeSocket,
+    this.tokensDir = defaultTokensDir,
   });
 
   /// Bearer token the app must present. It is the credential for everything the
@@ -17,13 +21,19 @@ class GatewayConfig {
   /// any credential on the host.
   final String token;
 
-  final Uri litellmUrl;
+  /// Null when no model provider is configured; then POST /v1/chat answers 503
+  /// and /v1/health probes nothing.
+  final Uri? litellmUrl;
   final String litellmKey;
   final int port;
 
   /// Path of the control plane's unix socket; `/v1/plane/*` is forwarded to it.
   /// Null when no plane is configured.
   final String? planeSocket;
+
+  /// Directory whose files each hold `sha256:<hex>` of one device's token; see
+  /// auth.dart.
+  final String tokensDir;
 
   /// Reads configuration, failing loudly on anything missing.
   ///
@@ -54,12 +64,17 @@ class GatewayConfig {
 
     return GatewayConfig(
       token: token,
-      litellmUrl: Uri.parse(env['LITELLM_URL'] ?? 'http://litellm:4000'),
+      litellmUrl: (env['LITELLM_URL'] ?? '').isEmpty
+          ? null
+          : Uri.parse(env['LITELLM_URL']!),
       litellmKey: required('LITELLM_MASTER_KEY'),
       port: int.tryParse(env['PORT'] ?? '') ?? 8080,
       planeSocket: (env['PLANE_SOCKET'] ?? '').isEmpty
           ? null
           : env['PLANE_SOCKET'],
+      tokensDir: (env['GATEWAY_TOKENS_DIR'] ?? '').isEmpty
+          ? defaultTokensDir
+          : env['GATEWAY_TOKENS_DIR']!,
     );
   }
 }
