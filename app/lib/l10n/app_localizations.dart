@@ -859,6 +859,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This plan is no longer open'**
   String get queueErrorNoSuchPlan;
+
+  /// No description provided for @navCapacity.
+  ///
+  /// In en, this message translates to:
+  /// **'Load'**
+  String get navCapacity;
+
+  /// No description provided for @navStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get navStats;
+
+  /// No description provided for @queuePriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority {priority}'**
+  String queuePriority(int priority);
+
+  /// No description provided for @queueSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps {spent} of {limit}'**
+  String queueSteps(int spent, int limit);
+
+  /// No description provided for @queueSetPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Set priority'**
+  String get queueSetPriority;
+
+  /// No description provided for @queueSetBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Set step limit'**
+  String get queueSetBudget;
+
+  /// No description provided for @queuePriorityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority (1 goes first)'**
+  String get queuePriorityTitle;
+
+  /// No description provided for @queueDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get queueDefault;
+
+  /// No description provided for @queueBudgetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step limit'**
+  String get queueBudgetTitle;
+
+  /// No description provided for @queueBudgetHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'{spent} spent. From 1 to 100000.'**
+  String queueBudgetHelp(int spent);
+
+  /// No description provided for @queueBudgetSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get queueBudgetSave;
+
+  /// No description provided for @valueUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get valueUnknown;
+
+  /// No description provided for @capacitySlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent slots: {slots}, running: {running}'**
+  String capacitySlots(String slots, String running);
+
+  /// No description provided for @capacityServer.
+  ///
+  /// In en, this message translates to:
+  /// **'This server'**
+  String get capacityServer;
+
+  /// No description provided for @capacityCpu.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU: {pct}%'**
+  String capacityCpu(String pct);
+
+  /// No description provided for @capacityMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory: {pct}% ({free} of {total} MB free)'**
+  String capacityMemory(String pct, String free, String total);
+
+  /// No description provided for @capacityDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk: {pct}% ({free} GB free)'**
+  String capacityDisk(String pct, String free);
+
+  /// No description provided for @capacityCores.
+  ///
+  /// In en, this message translates to:
+  /// **'Cores: {cores}'**
+  String capacityCores(String cores);
+
+  /// No description provided for @capacityHostUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not reachable'**
+  String get capacityHostUnreachable;
+
+  /// No description provided for @capacitySubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription'**
+  String get capacitySubscription;
+
+  /// No description provided for @capacityWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'{window}: {used} tokens ({pct}%), {burn} per hour'**
+  String capacityWindow(String window, String used, String pct, String burn);
+
+  /// No description provided for @capacitySlotsByPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Slots by plan'**
+  String get capacitySlotsByPlan;
+
+  /// No description provided for @capacityPlanSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan #{plan}: {slots} slots'**
+  String capacityPlanSlots(String plan, String slots);
+
+  /// No description provided for @capacityPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned load'**
+  String get capacityPlanned;
+
+  /// No description provided for @capacityPlannedRow.
+  ///
+  /// In en, this message translates to:
+  /// **'#{plan} {repo}: {width} sessions, {mem} MB, {cores} cores'**
+  String capacityPlannedRow(
+    String plan,
+    String repo,
+    String width,
+    String mem,
+    String cores,
+  );
+
+  /// No description provided for @capacityPlannedTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total: {sessions} sessions, {mem} MB, {cores} cores'**
+  String capacityPlannedTotal(String sessions, String mem, String cores);
+
+  /// No description provided for @statsForecast.
+  ///
+  /// In en, this message translates to:
+  /// **'Forecast'**
+  String get statsForecast;
+
+  /// No description provided for @statsProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Requirements done: {pct}%'**
+  String statsProgress(String pct);
+
+  /// No description provided for @statsTasksLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks left in this slice: {left} of {total}'**
+  String statsTasksLeft(String left, String total);
+
+  /// No description provided for @statsEta.
+  ///
+  /// In en, this message translates to:
+  /// **'At the current pace: {hours} h'**
+  String statsEta(String hours);
+
+  /// No description provided for @statsByKind.
+  ///
+  /// In en, this message translates to:
+  /// **'By sphere and kind'**
+  String get statsByKind;
+
+  /// No description provided for @statsGroupRow.
+  ///
+  /// In en, this message translates to:
+  /// **'{tasks} tasks · {wall} min wall · {work} min work · Opus {opus} / Sonnet {sonnet} tokens'**
+  String statsGroupRow(
+    String tasks,
+    String wall,
+    String work,
+    String opus,
+    String sonnet,
+  );
+
+  /// No description provided for @statsGroupResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Session memory p90 {mem} MB · cores p75 {cores} · gates p50 {gates} min'**
+  String statsGroupResources(String mem, String cores, String gates);
+
+  /// No description provided for @statsBySteps.
+  ///
+  /// In en, this message translates to:
+  /// **'By step'**
+  String get statsBySteps;
+
+  /// No description provided for @statsStepRow.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} runs · p50 {p50} min · p90 {p90} min · {share}% of time'**
+  String statsStepRow(String n, String p50, String p90, String share);
+
+  /// No description provided for @statsWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Last {days} days'**
+  String statsWindow(String days);
 }
 
 class _AppLocalizationsDelegate
