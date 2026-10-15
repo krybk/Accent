@@ -119,6 +119,34 @@ jobs:
         working-directory: app
         run: flutter build apk --debug
 
+      # The defects v0.2.0 shipped with (no INTERNET permission, no icon font)
+      # exist only in a release build, so the debug build above cannot see them.
+      # The Gradle guard refuses a release build without key.properties, so this
+      # step signs with a key generated here, per run, valid one day. It is not
+      # the release key and the APK is never uploaded: the rule that CI never
+      # holds the release keystore stands.
+      - name: Release APK manifest declares INTERNET
+        working-directory: app
+        run: |
+          pw=$(openssl rand -hex 16)
+          keytool -genkeypair -noprompt -keystore android/ci-throwaway.jks \
+            -storepass "$pw" -keypass "$pw" -alias ci -keyalg RSA -keysize 2048 \
+            -validity 1 -dname CN=ci-throwaway
+          # Not `echo`, as in release.yml.
+          {
+            printf 'storeFile=ci-throwaway.jks\n'
+            printf 'storePassword=%s\n' "$pw"
+            printf 'keyAlias=ci\n'
+            printf 'keyPassword=%s\n' "$pw"
+          } > android/key.properties
+          flutter build apk --release --target-platform android-x64
+          ../scripts/check-release-apk.sh build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Remove the throwaway signing material
+        if: always()
+        working-directory: app
+        run: rm -f android/ci-throwaway.jks android/key.properties
+
   gateway-stack:
     name: gateway stack
     runs-on: ubuntu-latest

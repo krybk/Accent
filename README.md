@@ -107,8 +107,8 @@ design; the debug build CI runs is unaffected.
 
 ## Installing and adding a server
 
-Download from the release page `accent-0.2.0-arm64-v8a.apk`, which fits
-practically every current phone, or `accent-0.2.0-universal.apk` if you are
+Download from the release page `accent-0.2.1-arm64-v8a.apk`, which fits
+practically every current phone, or `accent-0.2.1-universal.apk` if you are
 unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
 emulators.
 
@@ -116,7 +116,7 @@ Verify the download before installing it:
 
 ```
 sha256sum -c SHA256SUMS.txt --ignore-missing
-apksigner verify --print-certs accent-0.2.0-arm64-v8a.apk
+apksigner verify --print-certs accent-0.2.1-arm64-v8a.apk
 ```
 
 `apksigner` must print `certificate SHA-256 digest:` followed by the value
