@@ -37,6 +37,10 @@ RUN apt-get update \
 COPY --from=build /out/server /app/bin/server
 COPY --from=build /out/healthcheck /app/bin/healthcheck
 
+# The app finds a gateway that understands token files with
+# `docker ps --filter label=accent.gateway.tokens-dir`; key and value are a contract.
+LABEL accent.gateway.tokens-dir="/var/lib/accent/tokens.d"
+
 # Runs as root only because the Docker socket is root-owned. Narrowing this is
 # tied to putting a socket proxy in front, not to a uid change here.
 WORKDIR /app
