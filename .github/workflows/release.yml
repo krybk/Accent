@@ -146,6 +146,13 @@ jobs:
           ls -lh release
           cat release/SHA256SUMS.txt
 
+      # Both defects v0.2.0 shipped with are invisible in a debug build: INTERNET
+      # was declared only in the debug and profile manifests, so every socket
+      # failed with errno 1, and without `uses-material-design: true` no icon
+      # font was bundled. Checked on the very files about to be published.
+      - name: Release APKs can open sockets and draw icons
+        run: ./scripts/check-release-apk.sh release/*.apk
+
       - name: Publish the release
         uses: softprops/action-gh-release@v2
         with:
