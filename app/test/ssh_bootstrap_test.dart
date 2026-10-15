@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:accent/models/server_profile.dart';
 import 'package:accent/services/profile_repository.dart';
 import 'package:accent/services/secret_store.dart';
 import 'package:accent/services/ssh_bootstrap.dart';
 import 'package:accent/services/ssh_session.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The password used by every test.
@@ -63,14 +66,52 @@ ScriptedSshSession _passwordSession({bool keyAlreadyInstalled = false}) {
   return session;
 }
 
+SshCommandResult _stdout(String stdout) =>
+    SshCommandResult(exitCode: 0, stdout: stdout, stderr: '');
+
+/// Scripts the discovery of a server that runs no gateway: whether the plane
+/// socket exists, and which containers (one name per line) publish the port.
+void _expectDiscovery(
+  ScriptedSshSession session, {
+  bool plane = false,
+  String busy = '',
+}) {
+  session.expectCommand('accent.gateway.tokens-dir');
+  session.expectCommand('test -S', plane ? null : _failed(1));
+  session.expectCommand('publish=8443', _stdout(busy));
+}
+
+/// The session that answers the key connection of a server that already runs a
+/// gateway: discovery, the token file and the certificate, and nothing else.
+ScriptedSshSession _gatewaySession({String host = '10.0.0.5'}) {
+  final session = ScriptedSshSession();
+  session.expectCommand(
+    'accent.gateway.tokens-dir',
+    _stdout('gw0123456789 accent /var/lib/accent/tokens.d\n'),
+  );
+  session.expectCommand('service=caddy', _stdout('cd0123456789\n'));
+  session.expectCommand('docker port', _stdout('0.0.0.0:9443\n[::]:9443\n'));
+  session.expectCommand(
+    'docker inspect',
+    _stdout('PATH=/usr/bin\nGATEWAY_HOST=$host\n'),
+  );
+  if (host != '10.0.0.5') return session;
+  session.expectCommand('test -S');
+  session.expectCommand('sh -c');
+  session.expectCommand('root.crt', _stdout('$_caRoot\n'));
+  return session;
+}
+
 /// The session that answers the key connection: Docker onwards.
 ScriptedSshSession _keySession({
+  bool plane = false,
   bool dockerInstalled = true,
   bool cloned = false,
   bool tagExists = true,
   int healthAttempts = 1,
 }) {
   final session = ScriptedSshSession();
+  _expectDiscovery(session, plane: plane);
 
   session.expectCommand(
     'docker compose version',
@@ -107,6 +148,7 @@ List<String> _trace(List<BootstrapEvent> events) => events
       (event) => switch (event) {
         BootstrapStageStarted() => '${event.stage.name}: started',
         BootstrapStageSucceeded() => '${event.stage.name}: ok',
+        BootstrapStageSkipped() => '${event.stage.name}: skipped',
         BootstrapStageFailed() => '${event.stage.name}: failed',
       },
     )
@@ -173,6 +215,8 @@ void main() {
         'installKey: ok',
         'keyOnlyConnect: started',
         'keyOnlyConnect: ok',
+        'discover: started',
+        'discover: ok',
         'installDocker: started',
         'installDocker: ok',
         'checkout: started',
@@ -183,6 +227,7 @@ void main() {
         'startStack: ok',
         'awaitHealth: started',
         'awaitHealth: ok',
+        'issueToken: skipped',
         'readCertificate: started',
         'readCertificate: ok',
         'storeCredentials: started',
@@ -287,7 +332,25 @@ void main() {
       expect(_envValue(upload, 'ANTHROPIC_API_KEY'), providerKey);
       expect(_envValue(upload, 'GATEWAY_PORT'), '8443');
       expect(_envValue(upload, 'GATEWAY_HOST'), '10.0.0.5');
+      expect(_envValue(upload, 'COMPOSE_PROFILES'), 'litellm');
+      expect(upload.text, isNot(contains('PLANE_SOCKET_DIR')));
     });
+  });
+
+  test('a plane socket without a gateway adds PLANE_SOCKET_DIR', () async {
+    final byKey = _keySession(plane: true);
+    final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
+
+    final events = await runBootstrap(bootstrapWith(factory));
+
+    expect(
+      events.whereType<BootstrapDiscovered>().single.discovery,
+      ServerDiscovery.planeOnly,
+    );
+    expect(
+      _envValue(byKey.uploads.single, 'PLANE_SOCKET_DIR'),
+      '/run/accent-plane',
+    );
   });
 
   group('the generated secrets', () {
@@ -393,6 +456,7 @@ void main() {
 
     test('at the Docker install names installDocker and stops', () async {
       final byKey = ScriptedSshSession();
+      _expectDiscovery(byKey);
       byKey.expectCommand(
         'docker compose version',
         _failed(127, 'docker: not found'),
@@ -424,6 +488,7 @@ void main() {
     test('at compose up names startStack and stops', () async {
       // Everything up to `up -d --build` succeeds, and that command fails.
       final failing = ScriptedSshSession();
+      _expectDiscovery(failing);
       for (final command in const [
         'docker compose version',
         'command -v git',
@@ -457,6 +522,7 @@ void main() {
     test('to come up names awaitHealth and reports the attempts', () async {
       // Three attempts, none of which answers.
       final byKey = ScriptedSshSession();
+      _expectDiscovery(byKey);
       for (final command in const [
         'docker compose version',
         'command -v git',
@@ -486,6 +552,28 @@ void main() {
       expect(sleeps, hasLength(2));
       expect(await profiles.list(), isEmpty);
     });
+
+    test(
+      'when the gateway port is already published stops at discover',
+      () async {
+        final byKey = ScriptedSshSession();
+        _expectDiscovery(byKey, busy: 'other-proxy\n');
+        final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
+
+        final events = await runBootstrap(bootstrapWith(factory));
+
+        final failure = events.last as BootstrapStageFailed;
+        expect(failure.stage, BootstrapStage.discover);
+        expect(failure.reason, 'port 8443 is already published by other-proxy');
+        expect(
+          byKey.commands.where(
+            (c) => c.contains('docker compose') || c.contains('up -d'),
+          ),
+          isEmpty,
+        );
+        expect(await profiles.list(), isEmpty);
+      },
+    );
 
     test('is not swallowed when it is a bug in this code', () async {
       // An exhausted script means the orchestrator ran a command the test did
@@ -637,6 +725,7 @@ void main() {
 
     test('is released even when a later stage fails', () async {
       final byKey = ScriptedSshSession();
+      _expectDiscovery(byKey);
       byKey.expectCommand('docker compose version', _failed(127));
       byKey.expectCommand('get.docker.com', _failed(1, 'no network'));
       final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
@@ -648,22 +737,137 @@ void main() {
     });
   });
 
-  test(
-    'a missing provider key is refused before anything is touched',
-    () async {
-      final factory = ScriptedSshSessionFactory([]);
+  test('an empty provider key deploys without LiteLLM', () async {
+    final byKey = _keySession();
+    final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
 
-      await expectLater(
-        bootstrapWith(factory)
-            .run(
-              profile: profile,
-              password: RootPassword(rootPassword),
-              anthropicApiKey: '   ',
-            )
-            .toList(),
-        throwsArgumentError,
+    final events = await bootstrapWith(factory)
+        .run(
+          profile: profile,
+          password: RootPassword(rootPassword),
+          anthropicApiKey: '',
+        )
+        .toList();
+
+    final lines = byKey.uploads.single.text.split('\n');
+    expect(lines, contains('ANTHROPIC_API_KEY='));
+    expect(lines.where((line) => line.startsWith('COMPOSE_PROFILES')), isEmpty);
+    expect(events.last, isA<BootstrapStageSucceeded>());
+    expect(events.last.stage, BootstrapStage.storeCredentials);
+    expect(await profiles.providerKey(profile.id), isNull);
+  });
+
+  group('an existing gateway', () {
+    const storedToken = 'tok-0123456789abcdefghijklmnopqrstuv';
+
+    test('is joined with a token file and nothing rebuilt', () async {
+      await profiles.storeGatewayCredentials(
+        profile.id,
+        token: storedToken,
+        certificatePem: 'old',
       );
-      expect(factory.connections, isEmpty);
-    },
-  );
+      final byKey = _gatewaySession();
+      final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
+
+      final events = await runBootstrap(bootstrapWith(factory));
+
+      expect(_trace(events), [
+        'connect: started',
+        'connect: ok',
+        'installKey: started',
+        'installKey: ok',
+        'keyOnlyConnect: started',
+        'keyOnlyConnect: ok',
+        'discover: started',
+        'discover: ok',
+        'installDocker: skipped',
+        'checkout: skipped',
+        'writeEnvironment: skipped',
+        'startStack: skipped',
+        'awaitHealth: skipped',
+        'issueToken: started',
+        'issueToken: ok',
+        'readCertificate: started',
+        'readCertificate: ok',
+        'storeCredentials: started',
+        'storeCredentials: ok',
+      ]);
+      expect(
+        events.whereType<BootstrapDiscovered>().single.discovery,
+        ServerDiscovery.existingGateway,
+      );
+
+      final issue = byKey.commands.singleWhere((c) => c.contains('sh -c'));
+      expect(
+        issue,
+        contains('sha256:${sha256.convert(utf8.encode(storedToken))}'),
+      );
+      expect(issue, contains('/var/lib/accent/tokens.d'));
+      expect(issue, contains('gw0123456789'));
+      expect(issue, isNot(contains(storedToken)));
+      for (final fragment in const [
+        '/opt/accent',
+        '.env',
+        'compose up',
+        'up -d',
+        'git',
+      ]) {
+        expect(
+          byKey.commands.where((c) => c.contains(fragment)),
+          isEmpty,
+          reason: fragment,
+        );
+      }
+      expect(byKey.uploads, isEmpty);
+      expect(byKey.pending, isEmpty);
+
+      expect(await profiles.gatewayCertificate(profile.id), _caRoot);
+      final saved = (await profiles.list()).single;
+      expect(saved.gatewayPort, 9443);
+      expect(saved.bootstrapped, isTrue);
+      expect(await profiles.gatewayToken(profile.id), storedToken);
+      for (final event in events) {
+        expect(event.toString(), isNot(contains(storedToken)));
+      }
+    });
+
+    test('whose certificate names another host fails at discover', () async {
+      final byKey = _gatewaySession(host: '203.0.113.9');
+      final factory = ScriptedSshSessionFactory([_passwordSession(), byKey]);
+
+      final events = await runBootstrap(bootstrapWith(factory));
+
+      final failure = events.last as BootstrapStageFailed;
+      expect(failure.stage, BootstrapStage.discover);
+      expect(failure.reason, contains('203.0.113.9'));
+      expect(byKey.commands.where((c) => c.contains('sh -c')), isEmpty);
+      expect(await profiles.list(), isEmpty);
+    });
+
+    test('a second run reuses the stored token', () async {
+      final hashes = <String>[];
+      for (final installed in const [false, true]) {
+        final byKey = _gatewaySession();
+        final factory = ScriptedSshSessionFactory([
+          _passwordSession(keyAlreadyInstalled: installed),
+          byKey,
+        ]);
+
+        final events = await runBootstrap(bootstrapWith(factory));
+
+        expect(events.whereType<BootstrapStageFailed>(), isEmpty);
+        hashes.add(
+          RegExp(r'sha256:([0-9a-f]{64})')
+              .firstMatch(
+                byKey.commands.singleWhere((c) => c.contains('sh -c')),
+              )!
+              .group(1)!,
+        );
+      }
+
+      final token = (await profiles.gatewayToken(profile.id))!;
+      expect(hashes[0], hashes[1]);
+      expect(hashes[0], sha256.convert(utf8.encode(token)).toString());
+    });
+  });
 }
