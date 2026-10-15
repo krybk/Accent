@@ -107,8 +107,8 @@ design; the debug build CI runs is unaffected.
 
 ## Installing and adding a server
 
-Download from the release page `accent-0.1.0-arm64-v8a.apk`, which fits
-practically every current phone, or `accent-0.1.0-universal.apk` if you are
+Download from the release page `accent-0.2.0-arm64-v8a.apk`, which fits
+practically every current phone, or `accent-0.2.0-universal.apk` if you are
 unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
 emulators.
 
@@ -116,7 +116,7 @@ Verify the download before installing it:
 
 ```
 sha256sum -c SHA256SUMS.txt --ignore-missing
-apksigner verify --print-certs accent-0.1.0-arm64-v8a.apk
+apksigner verify --print-certs accent-0.2.0-arm64-v8a.apk
 ```
 
 `apksigner` must print `certificate SHA-256 digest:` followed by the value
@@ -142,7 +142,9 @@ screen it opens is titled "Add a server" too. Fill in:
 and, under "Used once, never stored":
 
 - **Root password** — the bootstrap installs a key with it and then drops it;
-- **Anthropic API key** — the stack will not start without it.
+- **Anthropic API key** — optional. Chat goes through the control plane and
+  does not need it; only the stack's own `/v1/chat` uses it. Without it the
+  stack starts without LiteLLM.
 
 Then press **Save the server**. The app opens "Deploying the stack" and ticks
 through its stages. On success it shows "The server is ready" and **Done**; on
@@ -150,8 +152,37 @@ failure "The bootstrap failed" and **Close**. Adding the same server again is
 safe (see [How access works](#how-access-works)). The server then shows as
 "Bootstrapped" in the list.
 
-The bootstrap does the steps in the numbered list under
-[How access works](#how-access-works) and puts the stack in `/opt/accent`.
+Before deploying anything, the bootstrap looks, read-only, at what the server
+already runs, and takes one of three paths:
+
+1. **A running Accent gateway** (a container labelled
+   `accent.gateway.tokens-dir`). The app joins it without rebuilding or
+   restarting anything, and without reading or writing `/opt/accent` or any
+   `.env`: it pins the CA of that gateway's Caddy, uses the port Caddy
+   publishes, and writes its own token file under `/var/lib/accent/tokens.d`
+   in the gateway container. The file holds only the SHA-256 of the token; the
+   token itself stays on the phone. Each app gets its own file, named by its
+   server profile, so adding the same server again rewrites that file. The
+   server must be added under the address the gateway's certificate is issued
+   for (its `GATEWAY_HOST`); any other address is refused.
+2. **A control plane socket at `/run/accent-plane/plane.sock` and no
+   gateway.** The stack is deployed as in the third case, with the gateway
+   attached to that socket.
+3. **Neither.** The stack is deployed: the steps in the numbered list under
+   [How access works](#how-access-works), with the stack in `/opt/accent`.
+
+If another container already publishes the gateway port, the bootstrap stops
+before starting anything and names that container.
+
+To revoke one app's access to a shared gateway, list the token files and delete
+that app's file; `ls -l` shows when each was written:
+
+```
+docker exec <gateway container> ls -l /var/lib/accent/tokens.d
+docker exec <gateway container> rm /var/lib/accent/tokens.d/<file>
+```
+
+Other apps keep working.
 
 Tapping the server opens:
 
