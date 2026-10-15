@@ -391,6 +391,67 @@ void main() {
     expect(q.toJson(), json);
   });
 
+  test('PlaneQueue v2 round-trips with priority and step budget', () {
+    final json = {
+      'queue': [
+        {
+          'id': '11',
+          'title': 'First plan',
+          'status': 'running',
+          'position': 1,
+          'held': false,
+          'owner_ordered': true,
+          'priority': 1,
+          'steps_spent': 40,
+          'step_limit': 180,
+        },
+        {
+          'id': '12',
+          'title': 'Second plan',
+          'status': 'waiting',
+          'position': 2,
+          'held': true,
+          'owner_ordered': false,
+          'priority': 3,
+          'steps_spent': 0,
+          'step_limit': 250,
+        },
+      ],
+    };
+    final q = PlaneQueue.fromJson(json);
+    expect(q.entries[0].priority, 1);
+    expect(q.entries[0].stepsSpent, 40);
+    expect(q.entries[0].stepLimit, 180);
+    expect(q.entries[1].priority, 3);
+    expect(q.entries[1].stepsSpent, 0);
+    expect(q.entries[1].stepLimit, 250);
+    expect(q.toJson(), json);
+  });
+
+  test('PlaneQueue v1 entry has no priority or step budget', () {
+    final e = PlaneQueueEntry.fromJson({
+      'id': '11',
+      'title': 'First plan',
+      'status': 'running',
+      'position': 1,
+      'held': false,
+      'owner_ordered': true,
+    });
+    expect(e.priority, isNull);
+    expect(e.stepsSpent, isNull);
+    expect(e.stepLimit, isNull);
+    expect(
+      e.toJson().keys,
+      isNot(
+        anyOf(
+          contains('priority'),
+          contains('steps_spent'),
+          contains('step_limit'),
+        ),
+      ),
+    );
+  });
+
   test('PlaneQueueVerb names are the path segments', () {
     expect(PlaneQueueVerb.values.map((v) => v.name), [
       'up',
