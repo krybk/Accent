@@ -116,6 +116,36 @@ class GatewayClient {
         ),
       );
 
+  /// Sets the plan's priority; null restores the server default.
+  Future<PlaneQueue> setPlanPriority(String planId, int? priority) async =>
+      PlaneQueue.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/queue/${Uri.encodeComponent(planId)}/priority',
+          const Duration(seconds: 60),
+          body: jsonEncode({'priority': priority}),
+        ),
+      );
+
+  /// Sets the plan's step budget; null restores the server default.
+  Future<PlaneQueue> setPlanBudget(String planId, int? steps) async =>
+      PlaneQueue.fromJson(
+        await _send(
+          'POST',
+          '/v1/plane/plans/${Uri.encodeComponent(planId)}/budget',
+          const Duration(seconds: 60),
+          body: jsonEncode({'steps': steps}),
+        ),
+      );
+
+  Future<PlaneCapacity> planeCapacity() async => PlaneCapacity.fromJson(
+    await _send('GET', '/v1/plane/capacity', const Duration(seconds: 20)),
+  );
+
+  Future<PlaneStats> planeStats() async => PlaneStats.fromJson(
+    await _send('GET', '/v1/plane/stats', const Duration(seconds: 30)),
+  );
+
   /// Streams the answer to a chat message as server-sent events. Ends after
   /// the first `done` or `error` event.
   Stream<PlaneChatEvent> chat(PlaneChatRequest r) async* {

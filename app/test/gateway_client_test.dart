@@ -589,4 +589,92 @@ void main() {
       ),
     );
   });
+
+  group('plane v2 endpoints', () {
+    const queue = {
+      'queue': [
+        {
+          'id': '11',
+          'title': 'First',
+          'status': 'waiting',
+          'position': 1,
+          'held': false,
+          'owner_ordered': false,
+        },
+      ],
+    };
+
+    test('setPlanPriority', () async {
+      final seen = <http.Request>[];
+      final client = _client((request) async {
+        seen.add(request);
+        return _json(queue);
+      });
+      final queued = await client.setPlanPriority('11', 2);
+      await client.setPlanPriority('11', null);
+      expect(queued.entries.first.id, '11');
+      expect(seen[0].method, 'POST');
+      expect(seen[0].url.path, '/v1/plane/queue/11/priority');
+      expect(jsonDecode(seen[0].body), {'priority': 2});
+      expect(jsonDecode(seen[1].body), {'priority': null});
+    });
+
+    test('setPlanBudget', () async {
+      final seen = <http.Request>[];
+      final client = _client((request) async {
+        seen.add(request);
+        return _json(queue);
+      });
+      final queued = await client.setPlanBudget('12', 250);
+      await client.setPlanBudget('12', null);
+      expect(queued.entries.first.id, '11');
+      expect(seen[0].method, 'POST');
+      expect(seen[0].url.path, '/v1/plane/plans/12/budget');
+      expect(jsonDecode(seen[0].body), {'steps': 250});
+      expect(jsonDecode(seen[1].body), {'steps': null});
+    });
+
+    test('setPlanPriority on a closed plan throws', () async {
+      final client = _client(
+        (_) async =>
+            http.Response('{"code":"no_such_plan","message":"closed"}', 404),
+      );
+      await expectLater(
+        client.setPlanPriority('11', 1),
+        throwsA(
+          isA<GatewayException>()
+              .having((e) => e.statusCode, 'statusCode', 404)
+              .having((e) => e.code, 'code', 'no_such_plan'),
+        ),
+      );
+    });
+
+    test('planeCapacity', () async {
+      late http.Request seen;
+      final client = _client((request) async {
+        seen = request;
+        return _json({
+          'slots_now': 3,
+          'state': {'running': 1},
+        });
+      });
+      final capacity = await client.planeCapacity();
+      expect(seen.method, 'GET');
+      expect(seen.url.path, '/v1/plane/capacity');
+      expect(capacity.slotsNow, 3);
+      expect(capacity.running, 1);
+    });
+
+    test('planeStats', () async {
+      late http.Request seen;
+      final client = _client((request) async {
+        seen = request;
+        return _json({'days': 7, 'forecast': []});
+      });
+      final stats = await client.planeStats();
+      expect(seen.method, 'GET');
+      expect(seen.url.path, '/v1/plane/stats');
+      expect(stats.days, 7);
+    });
+  });
 }
