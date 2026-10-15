@@ -8,7 +8,7 @@ import 'add_server_screen.dart';
 
 typedef BootstrapRunner = Stream<BootstrapEvent> Function(NewServer server);
 
-enum _StageState { pending, running, succeeded, failed }
+enum _StageState { pending, running, succeeded, skipped, failed }
 
 class BootstrapScreen extends StatefulWidget {
   const BootstrapScreen({required this.server, required this.run, super.key});
@@ -36,6 +36,7 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
   StreamSubscription<BootstrapEvent>? _subscription;
   BootstrapStage? _current;
   BootstrapEvent? _last;
+  ServerDiscovery? _discovery;
   bool _running = true;
   bool _succeeded = false;
 
@@ -60,10 +61,17 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
         case BootstrapStageStarted():
           _current = event.stage;
           _states[event.stage] = _StageState.running;
+        case BootstrapDiscovered():
+          _states[event.stage] = _StageState.succeeded;
+          _discovery = event.discovery;
+          final detail = event.detail;
+          if (detail != null) _details[event.stage] = detail;
         case BootstrapStageSucceeded():
           _states[event.stage] = _StageState.succeeded;
           final detail = event.detail;
           if (detail != null) _details[event.stage] = detail;
+        case BootstrapStageSkipped():
+          _states[event.stage] = _StageState.skipped;
         case BootstrapStageFailed():
           _states[event.stage] = _StageState.failed;
           _reasons[event.stage] = event.reason;
@@ -96,6 +104,7 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
 
   String _stageName(AppLocalizations l10n, BootstrapStage s) => switch (s) {
     BootstrapStage.connect => l10n.bootstrapStageConnect,
+    BootstrapStage.discover => l10n.bootstrapStageDiscover,
     BootstrapStage.installKey => l10n.bootstrapStageInstallKey,
     BootstrapStage.keyOnlyConnect => l10n.bootstrapStageKeyOnlyConnect,
     BootstrapStage.installDocker => l10n.bootstrapStageInstallDocker,
@@ -103,9 +112,17 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
     BootstrapStage.writeEnvironment => l10n.bootstrapStageWriteEnvironment,
     BootstrapStage.startStack => l10n.bootstrapStageStartStack,
     BootstrapStage.awaitHealth => l10n.bootstrapStageAwaitHealth,
+    BootstrapStage.issueToken => l10n.bootstrapStageIssueToken,
     BootstrapStage.readCertificate => l10n.bootstrapStageReadCertificate,
     BootstrapStage.storeCredentials => l10n.bootstrapStageStoreCredentials,
   };
+
+  String _discoveryText(AppLocalizations l10n, ServerDiscovery d) =>
+      switch (d) {
+        ServerDiscovery.existingGateway => l10n.discoveryExistingGateway,
+        ServerDiscovery.planeOnly => l10n.discoveryPlaneOnly,
+        ServerDiscovery.nothing => l10n.discoveryNothing,
+      };
 
   Widget _entry(AppLocalizations l10n, ColorScheme colors, BootstrapStage s) {
     final key = BootstrapScreen.stageKey(s);
@@ -129,11 +146,27 @@ class _BootstrapScreenState extends State<BootstrapScreen> {
         );
       case _StageState.succeeded:
         final detail = _details[s];
+        if (s == BootstrapStage.discover && _discovery != null) {
+          final text = _discoveryText(l10n, _discovery!);
+          return ListTile(
+            key: key,
+            leading: const Icon(Icons.check_circle),
+            title: title,
+            subtitle: Text(detail == null ? text : '$text\n$detail'),
+          );
+        }
         return ListTile(
           key: key,
           leading: const Icon(Icons.check_circle),
           title: title,
           subtitle: detail == null ? null : Text(detail),
+        );
+      case _StageState.skipped:
+        return ListTile(
+          key: key,
+          leading: const Icon(Icons.remove_circle_outline),
+          title: title,
+          subtitle: Text(l10n.bootstrapStageSkipped),
         );
       case _StageState.failed:
         final leading = Icon(Icons.error, color: colors.error);

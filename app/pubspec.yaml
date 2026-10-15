@@ -5,7 +5,7 @@ publish_to: none
 # Version is the source of truth for the APK filename and the release tag.
 # build+number is what Android uses to decide "newer", so it must increase on
 # every published build even when the semantic version does not.
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ^3.9.0
@@ -25,6 +25,8 @@ dependencies:
   # Key generation, which dartssh2 does not provide. Same ed25519 implementation
   # dartssh2 signs with, so no second crypto library enters the tree.
   pinenacl: ^0.6.0
+  # SHA-256 of the token this app writes into an existing gateway's tokens.d.
+  crypto: ^3.0.6
 
   # Private keys and gateway tokens go here, not into shared preferences: this
   # wraps the Android Keystore, so the material is not readable by backup or by

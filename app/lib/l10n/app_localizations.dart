@@ -227,13 +227,13 @@ abstract class AppLocalizations {
   /// No description provided for @fieldProviderKey.
   ///
   /// In en, this message translates to:
-  /// **'Anthropic API key'**
+  /// **'Anthropic API key (optional)'**
   String get fieldProviderKey;
 
   /// No description provided for @fieldProviderKeyHelper.
   ///
   /// In en, this message translates to:
-  /// **'The stack will not start without it'**
+  /// **'Not needed for chat, which goes through the control plane. Only the stack\'s own /v1/chat uses it.'**
   String get fieldProviderKeyHelper;
 
   /// No description provided for @errorEnterHost.
@@ -253,12 +253,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter the root password'**
   String get errorEnterRootPassword;
-
-  /// No description provided for @errorEnterProviderKey.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the Anthropic API key'**
-  String get errorEnterProviderKey;
 
   /// No description provided for @errorPortRange.
   ///
@@ -542,6 +536,12 @@ abstract class AppLocalizations {
   /// **'Checking the key works without the password'**
   String get bootstrapStageKeyOnlyConnect;
 
+  /// No description provided for @bootstrapStageDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking at what the server already runs'**
+  String get bootstrapStageDiscover;
+
   /// No description provided for @bootstrapStageInstallDocker.
   ///
   /// In en, this message translates to:
@@ -572,6 +572,12 @@ abstract class AppLocalizations {
   /// **'Waiting for the stack to answer'**
   String get bootstrapStageAwaitHealth;
 
+  /// No description provided for @bootstrapStageIssueToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Issuing this app a token'**
+  String get bootstrapStageIssueToken;
+
   /// No description provided for @bootstrapStageReadCertificate.
   ///
   /// In en, this message translates to:
@@ -583,6 +589,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Storing the credentials'**
   String get bootstrapStageStoreCredentials;
+
+  /// No description provided for @bootstrapStageSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped: the server already runs it'**
+  String get bootstrapStageSkipped;
+
+  /// No description provided for @discoveryExistingGateway.
+  ///
+  /// In en, this message translates to:
+  /// **'Found a running Accent gateway: connecting to it, nothing will be rebuilt'**
+  String get discoveryExistingGateway;
+
+  /// No description provided for @discoveryPlaneOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Found a control plane without a gateway: installing only the gateway'**
+  String get discoveryPlaneOnly;
+
+  /// No description provided for @discoveryNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found: deploying the stack'**
+  String get discoveryNothing;
 
   /// No description provided for @navChat.
   ///
