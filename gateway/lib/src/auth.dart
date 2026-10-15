@@ -2,7 +2,9 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:shelf/shelf.dart';
 
 /// Paths reachable without a credential.
@@ -30,28 +32,66 @@ bool secureEquals(String a, String b) {
   return mismatch == 0;
 }
 
-/// Rejects any request that does not carry the gateway token.
-Middleware requireToken(String expected) => (innerHandler) {
-  return (request) {
-    if (_publicPaths.contains(request.url.path)) {
-      return innerHandler(request);
+/// Rejects any request that does not carry a valid token.
+///
+/// A request passes with the environment token or with a token whose hash is in
+/// a file of [tokensDir]. The directory is re-read on every request the
+/// environment token does not match, with no cache, so writing or deleting a
+/// file takes effect on the next request. One file per device: delete it to
+/// revoke that device.
+Middleware requireToken(String expected, {String? tokensDir}) =>
+    (innerHandler) {
+      return (request) {
+        if (_publicPaths.contains(request.url.path)) {
+          return innerHandler(request);
+        }
+
+        final header = request.headers['authorization'] ?? '';
+        const prefix = 'Bearer ';
+        final presented = header.startsWith(prefix)
+            ? header.substring(prefix.length)
+            : '';
+
+        if (!(presented.isNotEmpty &&
+            (secureEquals(presented, expected) ||
+                _matchesTokenFile(presented, tokensDir)))) {
+          // No detail in the body on purpose: distinguishing "no token" from
+          // "wrong token" tells a prober whether it is on the right track.
+          return Response.unauthorized(
+            jsonEncode({'code': 'unauthorized', 'message': 'invalid token'}),
+            headers: {'content-type': 'application/json'},
+          );
+        }
+
+        return innerHandler(request);
+      };
+    };
+
+final _hashLine = RegExp(r'^sha256:[0-9a-f]{64}$');
+
+bool _matchesTokenFile(String presented, String? tokensDir) {
+  if (presented.isEmpty || tokensDir == null) return false;
+  final hash = 'sha256:${sha256.convert(utf8.encode(presented))}';
+  final List<FileSystemEntity> entries;
+  try {
+    entries = Directory(tokensDir).listSync(followLinks: false);
+  } on FileSystemException {
+    return false; // No directory: only the environment token works.
+  }
+  // Every file is compared, with no early return, so the time taken does not
+  // reveal which device's file matched.
+  var matched = false;
+  for (final entry in entries) {
+    // A file being written is not yet a credential.
+    if (entry is! File || entry.path.endsWith('.tmp')) continue;
+    final String line;
+    try {
+      line = entry.readAsLinesSync().firstOrNull?.trim() ?? '';
+    } on Object {
+      continue; // Unreadable or not text: ignored, never a 500.
     }
-
-    final header = request.headers['authorization'] ?? '';
-    const prefix = 'Bearer ';
-    final presented = header.startsWith(prefix)
-        ? header.substring(prefix.length)
-        : '';
-
-    if (!secureEquals(presented, expected)) {
-      // No detail in the body on purpose: distinguishing "no token" from
-      // "wrong token" tells a prober whether it is on the right track.
-      return Response.unauthorized(
-        jsonEncode({'code': 'unauthorized', 'message': 'invalid token'}),
-        headers: {'content-type': 'application/json'},
-      );
-    }
-
-    return innerHandler(request);
-  };
-};
+    if (!_hashLine.hasMatch(line)) continue;
+    if (secureEquals(hash, line)) matched = true;
+  }
+  return matched;
+}

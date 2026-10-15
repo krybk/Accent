@@ -23,6 +23,16 @@ Handler handlerWith(http.Client client) => const Pipeline()
     .addMiddleware(requireToken(token))
     .addHandler(buildRouter(config(), client).call);
 
+Handler handlerFor(GatewayConfig c, http.Client client) => const Pipeline()
+    .addMiddleware(requireToken(token))
+    .addHandler(buildRouter(c, client).call);
+
+GatewayConfig noProvider() => const GatewayConfig(
+  token: token,
+  litellmUrl: null,
+  litellmKey: 'internal-key',
+);
+
 Request get(String path, {String? bearer}) => Request(
   'GET',
   Uri.parse('http://localhost/$path'),
@@ -118,6 +128,44 @@ void main() {
         throwsA(isA<ApiError>()),
       );
     });
+
+    test('LITELLM_URL absent or empty means no provider', () {
+      const base = {'GATEWAY_TOKEN': token, 'LITELLM_MASTER_KEY': 'k'};
+      expect(GatewayConfig.fromEnvironment(base).litellmUrl, isNull);
+      expect(
+        GatewayConfig.fromEnvironment({...base, 'LITELLM_URL': ''}).litellmUrl,
+        isNull,
+      );
+      expect(
+        GatewayConfig.fromEnvironment({
+          ...base,
+          'LITELLM_URL': 'http://litellm:4000',
+        }).litellmUrl,
+        Uri.parse('http://litellm:4000'),
+      );
+    });
+
+    test('GATEWAY_TOKENS_DIR defaults when absent or empty', () {
+      const base = {'GATEWAY_TOKEN': token, 'LITELLM_MASTER_KEY': 'k'};
+      expect(
+        GatewayConfig.fromEnvironment(base).tokensDir,
+        '/var/lib/accent/tokens.d',
+      );
+      expect(
+        GatewayConfig.fromEnvironment({
+          ...base,
+          'GATEWAY_TOKENS_DIR': '',
+        }).tokensDir,
+        '/var/lib/accent/tokens.d',
+      );
+      expect(
+        GatewayConfig.fromEnvironment({
+          ...base,
+          'GATEWAY_TOKENS_DIR': '/tmp/x',
+        }).tokensDir,
+        '/tmp/x',
+      );
+    });
   });
 
   group('model catalogue', () {
@@ -158,6 +206,20 @@ void main() {
       )(get('v1/health', bearer: token));
       expect(response.statusCode, 200);
     });
+
+    test('omits the litellm probe when no provider is configured', () async {
+      final response = await handlerFor(
+        noProvider(),
+        MockClient((_) async => fail('no upstream call expected')),
+      )(get('v1/health', bearer: token));
+
+      expect(response.statusCode, 200);
+      final status = HealthStatus.fromJson(
+        jsonDecode(await response.readAsString()) as Map<String, dynamic>,
+      );
+      expect(status.services, isEmpty);
+      expect(status.version, '0.2.0');
+    });
   });
 
   group('chat', () {
@@ -170,6 +232,36 @@ void main() {
             body: jsonEncode(body),
           ),
         );
+
+    Future<void> expectNotConfigured(Object body) async {
+      final response =
+          await handlerFor(
+            noProvider(),
+            MockClient((_) async => fail('no upstream call expected')),
+          )(
+            Request(
+              'POST',
+              Uri.parse('http://localhost/v1/chat'),
+              headers: {'authorization': 'Bearer $token'},
+              body: body,
+            ),
+          );
+      expect(response.statusCode, 503);
+      final error = ApiError.fromJson(
+        jsonDecode(await response.readAsString()) as Map<String, dynamic>,
+      );
+      expect(error.code, 'chat_not_configured');
+    }
+
+    test('chat_not_configured with 503 when no provider is configured', () {
+      return expectNotConfigured(
+        jsonEncode(const ChatRequest(model: 'sonnet', messages: []).toJson()),
+      );
+    });
+
+    test('chat_not_configured is answered before the body is parsed', () {
+      return expectNotConfigured('not json');
+    });
 
     test('rejects an unknown tier instead of substituting one', () async {
       final response = await post(
