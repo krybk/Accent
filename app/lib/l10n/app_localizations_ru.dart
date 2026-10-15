@@ -425,4 +425,162 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get queueErrorNoSuchPlan => 'Этот план уже закрыт';
+
+  @override
+  String get navCapacity => 'Загрузка';
+
+  @override
+  String get navStats => 'Статистика';
+
+  @override
+  String queuePriority(int priority) {
+    return 'Важность $priority';
+  }
+
+  @override
+  String queueSteps(int spent, int limit) {
+    return 'Шаги: $spent из $limit';
+  }
+
+  @override
+  String get queueSetPriority => 'Задать важность';
+
+  @override
+  String get queueSetBudget => 'Задать лимит шагов';
+
+  @override
+  String get queuePriorityTitle => 'Важность (1 — первым)';
+
+  @override
+  String get queueDefault => 'По умолчанию';
+
+  @override
+  String get queueBudgetTitle => 'Лимит шагов';
+
+  @override
+  String queueBudgetHelp(int spent) {
+    return 'Потрачено: $spent. От 1 до 100000.';
+  }
+
+  @override
+  String get queueBudgetSave => 'Сохранить';
+
+  @override
+  String get valueUnknown => '—';
+
+  @override
+  String capacitySlots(String slots, String running) {
+    return 'Слоты агентов: $slots, занято: $running';
+  }
+
+  @override
+  String get capacityServer => 'Этот сервер';
+
+  @override
+  String capacityCpu(String pct) {
+    return 'ЦП: $pct%';
+  }
+
+  @override
+  String capacityMemory(String pct, String free, String total) {
+    return 'Память: $pct% (свободно $free из $total МБ)';
+  }
+
+  @override
+  String capacityDisk(String pct, String free) {
+    return 'Диск: $pct% (свободно $free ГБ)';
+  }
+
+  @override
+  String capacityCores(String cores) {
+    return 'Ядер: $cores';
+  }
+
+  @override
+  String get capacityHostUnreachable => 'Недоступен';
+
+  @override
+  String get capacitySubscription => 'Подписка';
+
+  @override
+  String capacityWindow(String window, String used, String pct, String burn) {
+    return '$window: $used токенов ($pct%), $burn в час';
+  }
+
+  @override
+  String get capacitySlotsByPlan => 'Слоты по планам';
+
+  @override
+  String capacityPlanSlots(String plan, String slots) {
+    return 'План #$plan: слотов $slots';
+  }
+
+  @override
+  String get capacityPlanned => 'Плановая нагрузка';
+
+  @override
+  String capacityPlannedRow(
+    String plan,
+    String repo,
+    String width,
+    String mem,
+    String cores,
+  ) {
+    return '#$plan $repo: сессий $width, $mem МБ, ядер $cores';
+  }
+
+  @override
+  String capacityPlannedTotal(String sessions, String mem, String cores) {
+    return 'Всего: сессий $sessions, $mem МБ, ядер $cores';
+  }
+
+  @override
+  String get statsForecast => 'Прогноз';
+
+  @override
+  String statsProgress(String pct) {
+    return 'Требования выполнены: $pct%';
+  }
+
+  @override
+  String statsTasksLeft(String left, String total) {
+    return 'Задач в срезе осталось: $left из $total';
+  }
+
+  @override
+  String statsEta(String hours) {
+    return 'При текущем темпе: $hours ч';
+  }
+
+  @override
+  String get statsByKind => 'По сферам и типам';
+
+  @override
+  String statsGroupRow(
+    String tasks,
+    String wall,
+    String work,
+    String opus,
+    String sonnet,
+  ) {
+    return 'задач $tasks · $wall мин всего · $work мин работы · токены Opus $opus / Sonnet $sonnet';
+  }
+
+  @override
+  String statsGroupResources(String mem, String cores, String gates) {
+    return 'Память сессии p90 $mem МБ · ядра p75 $cores · гейты p50 $gates мин';
+  }
+
+  @override
+  String get statsBySteps => 'По шагам';
+
+  @override
+  String statsStepRow(String n, String p50, String p90, String share) {
+    return 'запусков $n · p50 $p50 мин · p90 $p90 мин · $share% времени';
+  }
+
+  @override
+  String statsWindow(String days) {
+    return 'За последние $days дн.';
+  }
 }

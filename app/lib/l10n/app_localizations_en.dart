@@ -427,4 +427,162 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get queueErrorNoSuchPlan => 'This plan is no longer open';
+
+  @override
+  String get navCapacity => 'Load';
+
+  @override
+  String get navStats => 'Stats';
+
+  @override
+  String queuePriority(int priority) {
+    return 'Priority $priority';
+  }
+
+  @override
+  String queueSteps(int spent, int limit) {
+    return 'Steps $spent of $limit';
+  }
+
+  @override
+  String get queueSetPriority => 'Set priority';
+
+  @override
+  String get queueSetBudget => 'Set step limit';
+
+  @override
+  String get queuePriorityTitle => 'Priority (1 goes first)';
+
+  @override
+  String get queueDefault => 'Default';
+
+  @override
+  String get queueBudgetTitle => 'Step limit';
+
+  @override
+  String queueBudgetHelp(int spent) {
+    return '$spent spent. From 1 to 100000.';
+  }
+
+  @override
+  String get queueBudgetSave => 'Save';
+
+  @override
+  String get valueUnknown => '—';
+
+  @override
+  String capacitySlots(String slots, String running) {
+    return 'Agent slots: $slots, running: $running';
+  }
+
+  @override
+  String get capacityServer => 'This server';
+
+  @override
+  String capacityCpu(String pct) {
+    return 'CPU: $pct%';
+  }
+
+  @override
+  String capacityMemory(String pct, String free, String total) {
+    return 'Memory: $pct% ($free of $total MB free)';
+  }
+
+  @override
+  String capacityDisk(String pct, String free) {
+    return 'Disk: $pct% ($free GB free)';
+  }
+
+  @override
+  String capacityCores(String cores) {
+    return 'Cores: $cores';
+  }
+
+  @override
+  String get capacityHostUnreachable => 'Not reachable';
+
+  @override
+  String get capacitySubscription => 'Subscription';
+
+  @override
+  String capacityWindow(String window, String used, String pct, String burn) {
+    return '$window: $used tokens ($pct%), $burn per hour';
+  }
+
+  @override
+  String get capacitySlotsByPlan => 'Slots by plan';
+
+  @override
+  String capacityPlanSlots(String plan, String slots) {
+    return 'Plan #$plan: $slots slots';
+  }
+
+  @override
+  String get capacityPlanned => 'Planned load';
+
+  @override
+  String capacityPlannedRow(
+    String plan,
+    String repo,
+    String width,
+    String mem,
+    String cores,
+  ) {
+    return '#$plan $repo: $width sessions, $mem MB, $cores cores';
+  }
+
+  @override
+  String capacityPlannedTotal(String sessions, String mem, String cores) {
+    return 'Total: $sessions sessions, $mem MB, $cores cores';
+  }
+
+  @override
+  String get statsForecast => 'Forecast';
+
+  @override
+  String statsProgress(String pct) {
+    return 'Requirements done: $pct%';
+  }
+
+  @override
+  String statsTasksLeft(String left, String total) {
+    return 'Tasks left in this slice: $left of $total';
+  }
+
+  @override
+  String statsEta(String hours) {
+    return 'At the current pace: $hours h';
+  }
+
+  @override
+  String get statsByKind => 'By sphere and kind';
+
+  @override
+  String statsGroupRow(
+    String tasks,
+    String wall,
+    String work,
+    String opus,
+    String sonnet,
+  ) {
+    return '$tasks tasks · $wall min wall · $work min work · Opus $opus / Sonnet $sonnet tokens';
+  }
+
+  @override
+  String statsGroupResources(String mem, String cores, String gates) {
+    return 'Session memory p90 $mem MB · cores p75 $cores · gates p50 $gates min';
+  }
+
+  @override
+  String get statsBySteps => 'By step';
+
+  @override
+  String statsStepRow(String n, String p50, String p90, String share) {
+    return '$n runs · p50 $p50 min · p90 $p90 min · $share% of time';
+  }
+
+  @override
+  String statsWindow(String days) {
+    return 'Last $days days';
+  }
 }

@@ -272,4 +272,128 @@ void main() {
     await _pump(tester, (r) => _json({'queue': []}));
     expect(find.text('No open plans'), findsOneWidget);
   });
+
+  Map<String, dynamic> v2(String id, String title, int position) => {
+    ..._entry(id, title, 'running', position),
+    'priority': 1,
+    'steps_spent': 40,
+    'step_limit': 180,
+  };
+
+  Future<List<http.Request>> pumpV2(WidgetTester tester) async {
+    final posts = <http.Request>[];
+    await _pump(tester, (r) {
+      if (r.method == 'POST') {
+        posts.add(r);
+        return _json({
+          'queue': [
+            {...v2('11', 'First, answered', 1), 'priority': 1},
+          ],
+        });
+      }
+      return _json({
+        'queue': [v2('11', 'First', 1)],
+      });
+    });
+    return posts;
+  }
+
+  Future<void> choose(WidgetTester tester, String key) async {
+    await _openMenu(tester, '11');
+    await tester.tap(find.byKey(Key(key)));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a v2 payload shows the priority chip and steps', (tester) async {
+    await pumpV2(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('queue-priority-chip-11')),
+        matching: find.text('Priority 1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('queue-steps-11'))).data,
+      'Steps 40 of 180',
+    );
+  });
+
+  testWidgets('v1 entries have no chip and disabled priority and budget', (
+    tester,
+  ) async {
+    await _pump(tester, (r) => _json(_queue3));
+    expect(find.byKey(const Key('queue-priority-chip-11')), findsNothing);
+    expect(find.byKey(const Key('queue-steps-11')), findsNothing);
+    await _openMenu(tester, '11');
+    expect(_enabled(tester, 'queue-set-priority-11'), isFalse);
+    expect(_enabled(tester, 'queue-set-budget-11'), isFalse);
+  });
+
+  testWidgets('choosing a priority posts it and renders the answer', (
+    tester,
+  ) async {
+    final posts = await pumpV2(tester);
+    await choose(tester, 'queue-set-priority-11');
+    await tester.tap(find.byKey(const Key('queue-priority-option-1')));
+    await tester.pumpAndSettle();
+    expect(posts, hasLength(1));
+    expect(posts.single.url.path, '/v1/plane/queue/11/priority');
+    expect(jsonDecode(posts.single.body), {'priority': 1});
+    expect(find.text('#11 First, answered'), findsOneWidget);
+  });
+
+  testWidgets('the default priority posts null', (tester) async {
+    final posts = await pumpV2(tester);
+    await choose(tester, 'queue-set-priority-11');
+    await tester.tap(find.byKey(const Key('queue-priority-option-default')));
+    await tester.pumpAndSettle();
+    expect(posts, hasLength(1));
+    expect(jsonDecode(posts.single.body), {'priority': null});
+  });
+
+  testWidgets('the budget saves only a value from 1 to 100000', (tester) async {
+    final posts = await pumpV2(tester);
+    await choose(tester, 'queue-set-budget-11');
+    for (final text in ['0', '']) {
+      await tester.enterText(find.byKey(const Key('queue-budget-field')), text);
+      await tester.pump();
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('queue-budget-save')))
+            .onPressed,
+        isNull,
+      );
+    }
+    expect(posts, isEmpty);
+    await tester.enterText(find.byKey(const Key('queue-budget-field')), '250');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('queue-budget-save')));
+    await tester.pumpAndSettle();
+    expect(posts, hasLength(1));
+    expect(posts.single.url.path, '/v1/plane/plans/11/budget');
+    expect(jsonDecode(posts.single.body), {'steps': 250});
+  });
+
+  testWidgets('the default budget posts null', (tester) async {
+    final posts = await pumpV2(tester);
+    await choose(tester, 'queue-set-budget-11');
+    await tester.tap(find.byKey(const Key('queue-budget-default')));
+    await tester.pumpAndSettle();
+    expect(posts, hasLength(1));
+    expect(jsonDecode(posts.single.body), {'steps': null});
+  });
+
+  testWidgets('dismissing either dialog posts nothing', (tester) async {
+    final posts = await pumpV2(tester);
+    await choose(tester, 'queue-set-priority-11');
+    await tester.tapAt(Offset.zero);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('queue-priority-option-1')), findsNothing);
+    await choose(tester, 'queue-set-budget-11');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('queue-budget-field')), findsNothing);
+    expect(posts, isEmpty);
+  });
 }

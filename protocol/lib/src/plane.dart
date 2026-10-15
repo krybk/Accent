@@ -697,6 +697,9 @@ class PlaneQueueEntry {
     required this.position,
     required this.held,
     required this.ownerOrdered,
+    this.priority,
+    this.stepsSpent,
+    this.stepLimit,
   });
 
   final String id;
@@ -705,6 +708,9 @@ class PlaneQueueEntry {
   final int position;
   final bool held;
   final bool ownerOrdered;
+  final int? priority;
+  final int? stepsSpent;
+  final int? stepLimit;
 
   factory PlaneQueueEntry.fromJson(Map<String, dynamic> json) =>
       PlaneQueueEntry(
@@ -714,6 +720,9 @@ class PlaneQueueEntry {
         position: json['position'] as int,
         held: json['held'] as bool,
         ownerOrdered: json['owner_ordered'] as bool,
+        priority: (json['priority'] as num?)?.toInt(),
+        stepsSpent: (json['steps_spent'] as num?)?.toInt(),
+        stepLimit: (json['step_limit'] as num?)?.toInt(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -723,6 +732,9 @@ class PlaneQueueEntry {
     'position': position,
     'held': held,
     'owner_ordered': ownerOrdered,
+    if (priority != null) 'priority': priority,
+    if (stepsSpent != null) 'steps_spent': stepsSpent,
+    if (stepLimit != null) 'step_limit': stepLimit,
   };
 }
 
