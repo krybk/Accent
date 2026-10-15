@@ -25,7 +25,7 @@ Future<void> main() async {
   final client = http.Client();
   final handler = const Pipeline()
       .addMiddleware(logRequests())
-      .addMiddleware(requireToken(config.token))
+      .addMiddleware(requireToken(config.token, tokensDir: config.tokensDir))
       .addHandler(buildRouter(config, client).call);
 
   // Bound to all interfaces because Caddy reaches it across the compose

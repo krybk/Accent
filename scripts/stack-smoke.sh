@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Builds and starts caddy, gateway and postgres under a throwaway compose
 # project and proves that the pinned CA root completes TLS to the gateway, that
-# the gateway token is enforced, and that /v1/plane/* is forwarded.
+# the gateway token is enforced, that /v1/plane/* is forwarded, that LiteLLM
+# stays down without a provider key and /v1/chat says so, and that a per-device
+# token file admits its token until it is deleted.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -16,6 +18,7 @@ env="$workdir/env"
 root="$workdir/root.crt"
 body="$workdir/body"
 auth="$workdir/auth"
+auth2="$workdir/auth2"
 compose=(docker compose -p "$project" --env-file "$env" -f gateway/docker-compose.yml)
 
 rand() { openssl rand -base64 36 | tr '+/' '-_'; }
@@ -32,7 +35,6 @@ cat >"$env" <<EOF
 GATEWAY_TOKEN=$token
 LITELLM_MASTER_KEY=$(rand)
 POSTGRES_PASSWORD=$(rand)
-ANTHROPIC_API_KEY=smoke-not-a-real-key
 GATEWAY_PORT=$port
 GATEWAY_HOST=$host
 PLANE_SOCKET_DIR=${PLANE_SOCKET_DIR:-/run/accent-plane}
@@ -86,16 +88,50 @@ code=$(get /v1/models -H @"$auth")
 [ "$code" = 200 ] || fail "GET /v1/models with auth -> $code (want 200)"
 ok "GET /v1/models with auth -> 200"
 
+running=$("${compose[@]}" ps --services --status running)
+if grep -qx litellm <<<"$running"; then
+  fail 'litellm is running without a provider key'
+fi
+ok 'litellm not started without a provider key'
+
+code=$(get /v1/chat -H @"$auth" -H 'content-type: application/json' \
+  -X POST --data '{"model":"sonnet","messages":[]}')
+[ "$code" = 503 ] || fail "POST /v1/chat -> $code (want 503)"
+grep -q chat_not_configured "$body" ||
+  fail 'POST /v1/chat body lacks chat_not_configured'
+ok 'POST /v1/chat -> 503 chat_not_configured'
+
+# A second, per-device token: only its hash enters the gateway.
+t2=$(rand)
+h=$(printf %s "$t2" | sha256sum | cut -d' ' -f1)
+printf 'Authorization: Bearer %s\n' "$t2" >"$auth2"
+chmod 600 "$auth2"
+"${compose[@]}" exec -T gateway sh -c \
+  "mkdir -p /var/lib/accent/tokens.d && printf 'sha256:%s\n' $h > /var/lib/accent/tokens.d/smoke" ||
+  fail 'could not write a token file'
+code=$(get /v1/models -H @"$auth2")
+[ "$code" = 200 ] || fail "GET /v1/models with a token file -> $code (want 200)"
+ok 'GET /v1/models with a token file -> 200'
+
+"${compose[@]}" exec -T gateway rm /var/lib/accent/tokens.d/smoke ||
+  fail 'could not remove the token file'
+code=$(get /v1/models -H @"$auth2")
+[ "$code" = 401 ] || fail "GET /v1/models after deleting the token file -> $code (want 401)"
+ok 'GET /v1/models after deleting the token file -> 401'
+code=$(get /v1/models -H @"$auth")
+[ "$code" = 200 ] || fail "GET /v1/models with the env token -> $code (want 200)"
+ok 'GET /v1/models with the env token still -> 200'
+
 code=$(get /v1/plane/status -H @"$auth")
 if [ "$expect_plane" = 1 ]; then
   [ "$code" = 200 ] || fail "GET /v1/plane/status -> $code (want 200)"
   ok "GET /v1/plane/status -> 200"
 elif [ "$code" = 200 ]; then
   ok "GET /v1/plane/status -> 200"
-elif [ "$code" = 503 ]; then
-  ok "GET /v1/plane/status -> 503 (no plane socket)"
+elif [ "$code" = 404 ]; then
+  ok "GET /v1/plane/status -> 404 (no plane socket)"
 else
-  fail "GET /v1/plane/status -> $code (want 200 or 503)"
+  fail "GET /v1/plane/status -> $code (want 200 or 404)"
 fi
 
 ok 'stack smoke passed'
