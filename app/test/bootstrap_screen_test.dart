@@ -65,9 +65,75 @@ void main() {
 
     expect(find.text('The server is ready'), findsOneWidget);
     expect(find.byKey(BootstrapScreen.finishButton), findsOneWidget);
-    expect(find.byIcon(Icons.check_circle), findsNWidgets(10));
+    expect(
+      find.byIcon(Icons.check_circle),
+      findsNWidgets(BootstrapStage.values.length),
+    );
     expect(find.text('at v1'), findsOneWidget);
     expect(find.textContaining('provider-key-for-tests'), findsNothing);
+  });
+
+  testWidgets('an existing gateway shows the discovery and skipped stages', (
+    tester,
+  ) async {
+    _bigView(tester);
+    Stream<BootstrapEvent> runner(NewServer server) async* {
+      for (final s in [
+        BootstrapStage.connect,
+        BootstrapStage.installKey,
+        BootstrapStage.keyOnlyConnect,
+      ]) {
+        yield BootstrapStageStarted(s);
+        yield BootstrapStageSucceeded(s);
+      }
+      yield const BootstrapStageStarted(BootstrapStage.discover);
+      yield const BootstrapDiscovered(
+        ServerDiscovery.existingGateway,
+        'gateway in compose project accent on port 8443; plane socket present',
+      );
+      for (final s in [
+        BootstrapStage.installDocker,
+        BootstrapStage.checkout,
+        BootstrapStage.writeEnvironment,
+        BootstrapStage.startStack,
+        BootstrapStage.awaitHealth,
+      ]) {
+        yield BootstrapStageSkipped(s);
+      }
+      for (final s in [
+        BootstrapStage.issueToken,
+        BootstrapStage.readCertificate,
+        BootstrapStage.storeCredentials,
+      ]) {
+        yield BootstrapStageStarted(s);
+        yield BootstrapStageSucceeded(s);
+      }
+    }
+
+    await tester.pumpWidget(_app(runner));
+    await tester.pumpAndSettle();
+
+    final discovery = find.textContaining(
+      'Found a running Accent gateway: connecting to it, nothing will be rebuilt',
+    );
+    expect(discovery, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(BootstrapScreen.stageKey(BootstrapStage.discover)),
+        matching: discovery,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Skipped: the server already runs it'), findsNWidgets(5));
+    expect(
+      find.descendant(
+        of: find.byKey(BootstrapScreen.stageKey(BootstrapStage.installDocker)),
+        matching: find.byIcon(Icons.remove_circle_outline),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.check_circle), findsNWidgets(7));
+    expect(find.text('The server is ready'), findsOneWidget);
   });
 
   testWidgets('a failed stage shows its reason and stderr', (tester) async {
