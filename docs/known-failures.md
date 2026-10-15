@@ -300,3 +300,21 @@ does not have.
 **Fix.** None to the step: the workflow was removed together with the rest of
 the Actions loop. The control plane now opens, merges and reports these pull
 requests.
+
+## Release APK: every connection fails with `Operation not permitted, errno = 1`
+
+**Symptom.** In the v0.2.0 release APK, adding a server fails at SSH connect
+with `SocketException ... Operation not permitted, errno = 1`, and every
+Material icon renders as an empty box. The debug APK CI built showed neither.
+
+**Cause.** Flutter's template declares `android.permission.INTERNET` only in
+`app/android/app/src/debug` and `src/profile`, not in `src/main`, so a release
+build had no network permission. And `app/pubspec.yaml` lacked
+`uses-material-design: true` under `flutter:`, so the MaterialIcons font was not
+bundled. Measured on the published x86_64 APK: `aapt2 dump permissions` listed
+no INTERNET, and `unzip -l` listed no MaterialIcons file.
+
+**Fix.** INTERNET in the main manifest and `uses-material-design: true`, in
+0.2.1. `scripts/check-release-apk.sh` checks both on a built APK: CI builds a
+release APK signed with a throwaway key and runs it, and `release.yml` runs it
+on every APK before publishing.
