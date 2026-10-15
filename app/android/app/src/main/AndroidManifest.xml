@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Release builds need it too: the debug and profile manifests declare it, main did not, and every socket in a release APK failed with errno 1. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="accent"
         android:name="${applicationName}"

@@ -15,7 +15,7 @@ import 'ssh_session.dart';
 /// `package_info_plus`, and neither buys anything: a release is a tag, the tag
 /// and the pubspec version are already required to agree by `release.yml`, and a
 /// version bump is a visible commit either way.
-const String accentVersion = '0.2.0';
+const String accentVersion = '0.2.1';
 
 /// Where the server clones from.
 ///
