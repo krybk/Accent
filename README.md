@@ -38,8 +38,8 @@ password its database was initialised with.
 
 ## Status
 
-Version 0.1.0 is released: the signed APKs are on
-[v0.1.0](https://github.com/krybk/Accent/releases/tag/v0.1.0), and
+Version 0.2.1 is released: the signed APKs are on
+[v0.2.1](https://github.com/krybk/Accent/releases/tag/v0.2.1), and
 [Installing and adding a server](#installing-and-adding-a-server) says how to
 set one up.
 
@@ -65,7 +65,7 @@ moves a plan up, down, to the top or to the end, or holds and resumes it.
 
 ## Releases
 
-v0.1.0 is the first release. The release workflow triggers on `v*` only, and the
+v0.1.0 was the first release and v0.2.1 is the latest. The release workflow triggers on `v*` only, and the
 tag is still the trigger: a release is a decision, and the tag is where that
 decision is recorded.
 
