@@ -5,6 +5,7 @@ import 'package:accent/main.dart';
 import 'package:accent/models/server_profile.dart';
 import 'package:accent/screens/add_server_screen.dart';
 import 'package:accent/screens/bootstrap_screen.dart';
+import 'package:accent/screens/queue_screen.dart';
 import 'package:accent/screens/server_home_screen.dart';
 import 'package:accent/screens/servers_screen.dart';
 import 'package:accent/services/gateway_client.dart';
@@ -296,6 +297,64 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('hello there'), findsOneWidget);
   });
+
+  testWidgets(
+    'the server home has four destinations and Queue shows the queue',
+    (tester) async {
+      await profiles.save(
+        const ServerProfile(
+          id: 'srv_1',
+          name: 'Deployed',
+          host: '192.0.2.10',
+          username: 'root',
+          bootstrapped: true,
+        ),
+      );
+      Future<http.Response> handler(http.Request r) async {
+        final body = switch (r.url.path) {
+          '/v1/plane/plans' => {'plans': []},
+          '/v1/plane/status' => {
+            'generated_at': '2026-10-13T09:00:00Z',
+            'providers': [],
+            'services': [],
+            'paused': [],
+          },
+          '/v1/plane/actions' => {'actions': []},
+          '/v1/plane/usage' => {
+            'generated_at': '2026-10-13T09:00:00Z',
+            'models': [],
+            'roles': [],
+          },
+          '/v1/plane/queue' => {'queue': []},
+          _ => null,
+        };
+        if (body == null) return http.Response('{}', 404);
+        return http.Response(
+          jsonEncode(body),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      await pumpApp(
+        tester,
+        gatewayClients: (profile) async => GatewayClient(
+          baseUri: profile.gatewayUri,
+          token: 't',
+          httpClient: MockClient(handler),
+        ),
+      );
+
+      await tester.tap(find.text('Deployed'));
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationDestination), findsNWidgets(4));
+
+      await tester.tap(find.text('Queue'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QueueScreen), findsOneWidget);
+      expect(find.text('No open plans'), findsOneWidget);
+    },
+  );
 
   testWidgets('a row that is not bootstrapped does not open a home', (
     tester,
