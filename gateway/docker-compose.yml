@@ -33,14 +33,16 @@ services:
     restart: unless-stopped
     environment:
       GATEWAY_TOKEN: ${GATEWAY_TOKEN:?set GATEWAY_TOKEN in .env}
-      LITELLM_URL: http://litellm:4000
+      # Empty without a provider key, and then the gateway answers /v1/chat
+      # with 503 chat_not_configured.
+      LITELLM_URL: ${ANTHROPIC_API_KEY:+http://litellm:4000}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
       DATABASE_URL: postgres://accent:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/accent
       PLANE_SOCKET: /run/plane/plane.sock
     volumes:
       # The directory holding the control plane's unix socket on the host. The
       # gateway forwards /v1/plane/* to it; with no plane there, those routes
-      # answer 503.
+      # answer 404 plane_not_configured.
       - ${PLANE_SOCKET_DIR:-/run/accent-plane}:/run/plane
       - gateway-data:/var/lib/accent
     depends_on:
@@ -55,12 +57,15 @@ services:
       retries: 5
       start_period: 10s
 
+  # LiteLLM serves only /v1/chat; the app's chat goes through /v1/plane/chat.
+  # It starts only with COMPOSE_PROFILES=litellm and ANTHROPIC_API_KEY set.
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
+    profiles: ["litellm"]
     restart: unless-stopped
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       DATABASE_URL: postgres://accent:${POSTGRES_PASSWORD}@postgres:5432/accent
     volumes:
