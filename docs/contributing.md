@@ -47,10 +47,14 @@ pull the Dart toolchain into a check that must run before anything is built.
 the compose project `accent-smoke` with a throwaway env file. It proves the CA
 root the app pins completes TLS to the gateway by IP address, that the gateway
 token is enforced (401 without it), and that `/v1/plane/*` is forwarded. It
+also proves that the stack runs without a provider key (LiteLLM stays down and
+`POST /v1/chat` answers 503 `chat_not_configured`), and that a token file
+written into `/var/lib/accent/tokens.d` admits its token on the next request
+and stops admitting it once deleted, while `GATEWAY_TOKEN` keeps working. It
 needs Docker, never touches `gateway/.env` or the `accent` project, and removes
 its containers and volumes even when it fails. Knobs: `SMOKE_HOST` (default
 127.0.0.1), `SMOKE_PORT` (default 18443), `SMOKE_EXPECT_PLANE=1` (require 200
-from /v1/plane/status instead of accepting 503), `PLANE_SOCKET_DIR` (default
+from /v1/plane/status instead of accepting 404), `PLANE_SOCKET_DIR` (default
 /run/accent-plane, the compose default).
 
 ## The repository is public

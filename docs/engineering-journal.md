@@ -355,3 +355,39 @@ thing is lost with it. The canary used OpenRouter's `/api/v1/generation` to
 report what each request was actually charged (entry "Constraints of the target
 environment" above). The Anthropic API has no per-request cost endpoint, so the
 canary now reports token counts only rather than print an estimate as a charge.
+
+## 2026-10-15. Per-device token files, optional LiteLLM, a missing plane socket
+
+The app gains a second way onto a server: connect to a gateway that is already
+running instead of deploying one. Three gateway changes make that possible.
+
+Per-device tokens. Besides `GATEWAY_TOKEN`, the gateway accepts any bearer
+token whose SHA-256 appears as `sha256:<hex>` on the first line of a file in
+`GATEWAY_TOKENS_DIR` (default `/var/lib/accent/tokens.d`, inside the
+`gateway-data` volume, so the files survive container recreation). The app
+generates its own token and writes only its hash over SSH, so nobody reads a
+secret off the server and the token itself never leaves the phone. One file per
+app means one phone is revoked by deleting its file, without rotating the token
+every other device holds. The directory is re-read on each request that the
+environment token does not match, with no cache, so a write or a delete takes
+effect on the next request. A malformed, unreadable or `.tmp` file is ignored,
+never an error: the app writes `name.tmp` and renames it, and a half-written
+file must not admit anything.
+
+The image carries `LABEL accent.gateway.tokens-dir="/var/lib/accent/tokens.d"`.
+The label is a capability marker, not configuration: the app finds a gateway
+that understands token files with
+`docker ps --filter label=accent.gateway.tokens-dir`, so an older image without
+the label is never mistaken for one that does. Key and value are a contract.
+
+LiteLLM and `ANTHROPIC_API_KEY` are optional. The app's chat goes through
+`/v1/plane/chat`; LiteLLM serves only `/v1/chat`. Without a key the compose
+stack starts caddy, gateway and postgres; LiteLLM starts only with
+`COMPOSE_PROFILES=litellm` and a key. The gateway then answers `POST /v1/chat`
+with 503 `chat_not_configured` and `/v1/health` reports no services rather
+than a dead LiteLLM. Gateway version 0.2.0.
+
+A missing plane socket means no plane is configured: `/v1/plane/*` answers 404
+`plane_not_configured`, the same as with no `PLANE_SOCKET` at all, so the app
+says "not configured" rather than "unavailable". A path that exists but refuses
+a connection is still 503 `plane_unavailable`: that plane is down, not absent.
