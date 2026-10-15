@@ -394,4 +394,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modelErrorNoSuchTier => 'The server does not know this model';
+
+  @override
+  String get navQueue => 'Queue';
+
+  @override
+  String get queueOrderNote => 'Plans are taken in this order.';
+
+  @override
+  String get queueEmpty => 'No open plans';
+
+  @override
+  String get queueHeld => 'On hold';
+
+  @override
+  String get queueMoveUp => 'Move up';
+
+  @override
+  String get queueMoveDown => 'Move down';
+
+  @override
+  String get queueMoveTop => 'Move to top';
+
+  @override
+  String get queueMoveBottom => 'Move to end';
+
+  @override
+  String get queueHold => 'Put on hold';
+
+  @override
+  String get queueResume => 'Return to queue';
+
+  @override
+  String get queueErrorNoSuchPlan => 'This plan is no longer open';
 }

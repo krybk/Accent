@@ -221,5 +221,16 @@
   "modelDisableBody": "Running work is saved and continues on the stand-in model.",
   "modelDisableConfirm": "Switch off",
   "modelErrorLastModel": "This is the last model that is on; it cannot be switched off",
-  "modelErrorNoSuchTier": "The server does not know this model"
+  "modelErrorNoSuchTier": "The server does not know this model",
+  "navQueue": "Queue",
+  "queueOrderNote": "Plans are taken in this order.",
+  "queueEmpty": "No open plans",
+  "queueHeld": "On hold",
+  "queueMoveUp": "Move up",
+  "queueMoveDown": "Move down",
+  "queueMoveTop": "Move to top",
+  "queueMoveBottom": "Move to end",
+  "queueHold": "Put on hold",
+  "queueResume": "Return to queue",
+  "queueErrorNoSuchPlan": "This plan is no longer open"
 }

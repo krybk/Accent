@@ -687,3 +687,62 @@ class PlaneModelSwitchList {
     'models': [for (final m in models) m.toJson()],
   };
 }
+
+/// One entry of `GET /v1/plane/queue`.
+class PlaneQueueEntry {
+  const PlaneQueueEntry({
+    required this.id,
+    required this.title,
+    required this.status,
+    required this.position,
+    required this.held,
+    required this.ownerOrdered,
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final int position;
+  final bool held;
+  final bool ownerOrdered;
+
+  factory PlaneQueueEntry.fromJson(Map<String, dynamic> json) =>
+      PlaneQueueEntry(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        status: json['status'] as String,
+        position: json['position'] as int,
+        held: json['held'] as bool,
+        ownerOrdered: json['owner_ordered'] as bool,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'status': status,
+    'position': position,
+    'held': held,
+    'owner_ordered': ownerOrdered,
+  };
+}
+
+/// The response of `GET /v1/plane/queue` and of `POST /v1/plane/queue/{id}/{verb}`.
+class PlaneQueue {
+  const PlaneQueue({required this.entries});
+
+  final List<PlaneQueueEntry> entries;
+
+  factory PlaneQueue.fromJson(Map<String, dynamic> json) => PlaneQueue(
+    entries: [
+      for (final e in json['queue'] as List<dynamic>)
+        PlaneQueueEntry.fromJson(e as Map<String, dynamic>),
+    ],
+  );
+
+  Map<String, dynamic> toJson() => {
+    'queue': [for (final e in entries) e.toJson()],
+  };
+}
+
+/// The path segment of `POST /v1/plane/queue/{id}/{verb}` is `verb.name`.
+enum PlaneQueueVerb { up, down, top, bottom, hold, resume }

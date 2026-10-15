@@ -362,4 +362,43 @@ void main() {
     expect(list.toJson(), json);
     expect(list.models[1].until, DateTime.utc(2026, 10, 14, 18));
   });
+
+  test('PlaneQueue round-trips', () {
+    final json = {
+      'queue': [
+        {
+          'id': '11',
+          'title': 'First plan',
+          'status': 'running',
+          'position': 1,
+          'held': false,
+          'owner_ordered': true,
+        },
+        {
+          'id': '12',
+          'title': 'Second plan',
+          'status': 'waiting',
+          'position': 2,
+          'held': true,
+          'owner_ordered': false,
+        },
+      ],
+    };
+    final q = PlaneQueue.fromJson(json);
+    expect(q.entries[1].held, true);
+    expect(q.entries[0].ownerOrdered, true);
+    expect(q.entries[1].position, 2);
+    expect(q.toJson(), json);
+  });
+
+  test('PlaneQueueVerb names are the path segments', () {
+    expect(PlaneQueueVerb.values.map((v) => v.name), [
+      'up',
+      'down',
+      'top',
+      'bottom',
+      'hold',
+      'resume',
+    ]);
+  });
 }
