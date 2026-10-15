@@ -232,5 +232,249 @@
   "queueMoveBottom": "Move to end",
   "queueHold": "Put on hold",
   "queueResume": "Return to queue",
-  "queueErrorNoSuchPlan": "This plan is no longer open"
+  "queueErrorNoSuchPlan": "This plan is no longer open",
+  "navCapacity": "Load",
+  "navStats": "Stats",
+  "queuePriority": "Priority {priority}",
+  "@queuePriority": {
+    "placeholders": {
+      "priority": {
+        "type": "int"
+      }
+    }
+  },
+  "queueSteps": "Steps {spent} of {limit}",
+  "@queueSteps": {
+    "placeholders": {
+      "spent": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "queueSetPriority": "Set priority",
+  "queueSetBudget": "Set step limit",
+  "queuePriorityTitle": "Priority (1 goes first)",
+  "queueDefault": "Default",
+  "queueBudgetTitle": "Step limit",
+  "queueBudgetHelp": "{spent} spent. From 1 to 100000.",
+  "@queueBudgetHelp": {
+    "placeholders": {
+      "spent": {
+        "type": "int"
+      }
+    }
+  },
+  "queueBudgetSave": "Save",
+  "valueUnknown": "—",
+  "capacitySlots": "Agent slots: {slots}, running: {running}",
+  "@capacitySlots": {
+    "placeholders": {
+      "slots": {
+        "type": "String"
+      },
+      "running": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityServer": "This server",
+  "capacityCpu": "CPU: {pct}%",
+  "@capacityCpu": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityMemory": "Memory: {pct}% ({free} of {total} MB free)",
+  "@capacityMemory": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityDisk": "Disk: {pct}% ({free} GB free)",
+  "@capacityDisk": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityCores": "Cores: {cores}",
+  "@capacityCores": {
+    "placeholders": {
+      "cores": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityHostUnreachable": "Not reachable",
+  "capacitySubscription": "Subscription",
+  "capacityWindow": "{window}: {used} tokens ({pct}%), {burn} per hour",
+  "@capacityWindow": {
+    "placeholders": {
+      "window": {
+        "type": "String"
+      },
+      "used": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "String"
+      },
+      "burn": {
+        "type": "String"
+      }
+    }
+  },
+  "capacitySlotsByPlan": "Slots by plan",
+  "capacityPlanSlots": "Plan #{plan}: {slots} slots",
+  "@capacityPlanSlots": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "slots": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityPlanned": "Planned load",
+  "capacityPlannedRow": "#{plan} {repo}: {width} sessions, {mem} MB, {cores} cores",
+  "@capacityPlannedRow": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      },
+      "repo": {
+        "type": "String"
+      },
+      "width": {
+        "type": "String"
+      },
+      "mem": {
+        "type": "String"
+      },
+      "cores": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityPlannedTotal": "Total: {sessions} sessions, {mem} MB, {cores} cores",
+  "@capacityPlannedTotal": {
+    "placeholders": {
+      "sessions": {
+        "type": "String"
+      },
+      "mem": {
+        "type": "String"
+      },
+      "cores": {
+        "type": "String"
+      }
+    }
+  },
+  "statsForecast": "Forecast",
+  "statsProgress": "Requirements done: {pct}%",
+  "@statsProgress": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "statsTasksLeft": "Tasks left in this slice: {left} of {total}",
+  "@statsTasksLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "statsEta": "At the current pace: {hours} h",
+  "@statsEta": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "statsByKind": "By sphere and kind",
+  "statsGroupRow": "{tasks} tasks · {wall} min wall · {work} min work · Opus {opus} / Sonnet {sonnet} tokens",
+  "@statsGroupRow": {
+    "placeholders": {
+      "tasks": {
+        "type": "String"
+      },
+      "wall": {
+        "type": "String"
+      },
+      "work": {
+        "type": "String"
+      },
+      "opus": {
+        "type": "String"
+      },
+      "sonnet": {
+        "type": "String"
+      }
+    }
+  },
+  "statsGroupResources": "Session memory p90 {mem} MB · cores p75 {cores} · gates p50 {gates} min",
+  "@statsGroupResources": {
+    "placeholders": {
+      "mem": {
+        "type": "String"
+      },
+      "cores": {
+        "type": "String"
+      },
+      "gates": {
+        "type": "String"
+      }
+    }
+  },
+  "statsBySteps": "By step",
+  "statsStepRow": "{n} runs · p50 {p50} min · p90 {p90} min · {share}% of time",
+  "@statsStepRow": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      },
+      "p50": {
+        "type": "String"
+      },
+      "p90": {
+        "type": "String"
+      },
+      "share": {
+        "type": "String"
+      }
+    }
+  },
+  "statsWindow": "Last {days} days",
+  "@statsWindow": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      }
+    }
+  }
 }
