@@ -5,9 +5,11 @@ import 'package:accent/main.dart';
 import 'package:accent/models/server_profile.dart';
 import 'package:accent/screens/add_server_screen.dart';
 import 'package:accent/screens/bootstrap_screen.dart';
+import 'package:accent/screens/capacity_screen.dart';
 import 'package:accent/screens/queue_screen.dart';
 import 'package:accent/screens/server_home_screen.dart';
 import 'package:accent/screens/servers_screen.dart';
+import 'package:accent/screens/stats_screen.dart';
 import 'package:accent/services/gateway_client.dart';
 import 'package:accent/services/profile_repository.dart';
 import 'package:accent/services/secret_store.dart';
@@ -326,6 +328,11 @@ void main() {
             'roles': [],
           },
           '/v1/plane/queue' => {'queue': []},
+          '/v1/plane/capacity' => {
+            'slots_now': 2,
+            'state': {'running': 1},
+          },
+          '/v1/plane/stats' => {'days': 7},
           _ => null,
         };
         if (body == null) return http.Response('{}', 404);
@@ -347,12 +354,30 @@ void main() {
 
       await tester.tap(find.text('Deployed'));
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationDestination), findsNWidgets(4));
+      expect(find.byType(NavigationDestination), findsNWidgets(6));
 
       await tester.tap(find.text('Queue'));
       await tester.pumpAndSettle();
       expect(find.byType(QueueScreen), findsOneWidget);
       expect(find.text('No open plans'), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Load'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CapacityScreen), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Stats'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(StatsScreen), findsOneWidget);
     },
   );
 

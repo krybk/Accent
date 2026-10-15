@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/server_profile.dart';
 import '../services/gateway_client.dart';
+import 'capacity_screen.dart';
 import 'chat_screen.dart';
 import 'plane_screen.dart';
 import 'queue_screen.dart';
+import 'stats_screen.dart';
 import 'usage_screen.dart';
 
 /// The home of one bootstrapped server: the plane, the token usage, the chat
@@ -50,12 +52,14 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
     super.dispose();
   }
 
-  // Plane, Usage, Chat, Queue -- the order of the IndexedStack below.
+  // Plane, Usage, Chat, Queue, Load, Stats -- the order of the IndexedStack below.
   List<(IconData, String)> _destinations(AppLocalizations l10n) => [
     (Icons.dashboard_outlined, l10n.navPlane),
     (Icons.bar_chart, l10n.navUsage),
     (Icons.chat_bubble_outline, l10n.navChat),
     (Icons.format_list_numbered, l10n.navQueue),
+    (Icons.memory, l10n.navCapacity),
+    (Icons.insights, l10n.navStats),
   ];
 
   @override
@@ -87,6 +91,8 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
               _index == 1 ? UsageScreen(client: c) : const SizedBox.shrink(),
               ChatScreen(client: c),
               _index == 3 ? QueueScreen(client: c) : const SizedBox.shrink(),
+              _index == 4 ? CapacityScreen(client: c) : const SizedBox.shrink(),
+              _index == 5 ? StatsScreen(client: c) : const SizedBox.shrink(),
             ],
           );
         },
