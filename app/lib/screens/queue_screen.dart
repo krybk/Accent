@@ -1,8 +1,11 @@
 import 'package:accent_protocol/protocol.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/gateway_client.dart';
+
+enum _RowAction { up, down, top, bottom, hold, resume, priority, budget }
 
 /// The order in which the control plane takes open plans, with the owner's
 /// controls to move a plan up, down, to either end, or to hold and resume it.
@@ -50,13 +53,50 @@ class _QueueScreenState extends State<QueueScreen> {
     }
   }
 
-  Future<void> _move(PlaneQueueEntry e, PlaneQueueVerb verb) async {
+  Future<void> _move(PlaneQueueEntry e, PlaneQueueVerb verb) =>
+      _post(() => widget.client.moveInQueue(e.id, verb));
+
+  Future<void> _askPriority(PlaneQueueEntry e) async {
+    final l10n = AppLocalizations.of(context);
+    final r = await showDialog<({int? priority})>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.queuePriorityTitle),
+        children: [
+          for (var n = 1; n <= 5; n++)
+            SimpleDialogOption(
+              key: Key('queue-priority-option-$n'),
+              onPressed: () => Navigator.pop(ctx, (priority: n)),
+              child: Text('$n'),
+            ),
+          SimpleDialogOption(
+            key: const Key('queue-priority-option-default'),
+            onPressed: () => Navigator.pop(ctx, (priority: null)),
+            child: Text(l10n.queueDefault),
+          ),
+        ],
+      ),
+    );
+    if (r == null || !mounted) return;
+    await _post(() => widget.client.setPlanPriority(e.id, r.priority));
+  }
+
+  Future<void> _askBudget(PlaneQueueEntry e) async {
+    final r = await showDialog<({int? steps})>(
+      context: context,
+      builder: (_) => _BudgetDialog(entry: e),
+    );
+    if (r == null || !mounted) return;
+    await _post(() => widget.client.setPlanBudget(e.id, r.steps));
+  }
+
+  Future<void> _post(Future<PlaneQueue> Function() call) async {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     var reload = false;
     setState(() => _busy = true);
     try {
-      final q = await widget.client.moveInQueue(e.id, verb);
+      final q = await call();
       if (!mounted) return;
       setState(() => _queue = q);
     } catch (err) {
@@ -130,13 +170,16 @@ class _QueueScreenState extends State<QueueScreen> {
 
   Widget _row(AppLocalizations l10n, PlaneQueueEntry e, {required bool last}) {
     PopupMenuItem<PlaneQueueVerb> item(
-      PlaneQueueVerb verb,
+      _RowAction a,
       String label,
-      bool enabled,
-    ) => PopupMenuItem<PlaneQueueVerb>(
-      key: Key('queue-${verb.name}-${e.id}'),
-      value: verb,
+      bool enabled, {
+      Key? key,
+      VoidCallback? onTap,
+    }) => PopupMenuItem<PlaneQueueVerb>(
+      key: key ?? Key('queue-${a.name}-${e.id}'),
+      value: PlaneQueueVerb.values.asNameMap()[a.name],
       enabled: enabled,
+      onTap: onTap,
       child: Text(label),
     );
     return ListTile(
@@ -148,6 +191,16 @@ class _QueueScreenState extends State<QueueScreen> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(e.status),
+          if (e.priority != null)
+            Chip(
+              key: Key('queue-priority-chip-${e.id}'),
+              label: Text(l10n.queuePriority(e.priority!)),
+            ),
+          if (e.stepsSpent != null && e.stepLimit != null)
+            Text(
+              l10n.queueSteps(e.stepsSpent!, e.stepLimit!),
+              key: Key('queue-steps-${e.id}'),
+            ),
           if (e.held) Chip(label: Text(l10n.queueHeld)),
         ],
       ),
@@ -156,14 +209,87 @@ class _QueueScreenState extends State<QueueScreen> {
         enabled: !_busy,
         onSelected: (v) => _move(e, v),
         itemBuilder: (_) => [
-          item(PlaneQueueVerb.up, l10n.queueMoveUp, e.position > 1),
-          item(PlaneQueueVerb.down, l10n.queueMoveDown, !last),
-          item(PlaneQueueVerb.top, l10n.queueMoveTop, e.position > 1),
-          item(PlaneQueueVerb.bottom, l10n.queueMoveBottom, !last),
-          if (!e.held) item(PlaneQueueVerb.hold, l10n.queueHold, true),
-          if (e.held) item(PlaneQueueVerb.resume, l10n.queueResume, true),
+          item(_RowAction.up, l10n.queueMoveUp, e.position > 1),
+          item(_RowAction.down, l10n.queueMoveDown, !last),
+          item(_RowAction.top, l10n.queueMoveTop, e.position > 1),
+          item(_RowAction.bottom, l10n.queueMoveBottom, !last),
+          if (!e.held) item(_RowAction.hold, l10n.queueHold, true),
+          if (e.held) item(_RowAction.resume, l10n.queueResume, true),
+          item(
+            _RowAction.priority,
+            l10n.queueSetPriority,
+            e.priority != null,
+            key: Key('queue-set-priority-${e.id}'),
+            onTap: () => _askPriority(e),
+          ),
+          item(
+            _RowAction.budget,
+            l10n.queueSetBudget,
+            e.stepLimit != null,
+            key: Key('queue-set-budget-${e.id}'),
+            onTap: () => _askBudget(e),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _BudgetDialog extends StatefulWidget {
+  const _BudgetDialog({required this.entry});
+
+  final PlaneQueueEntry entry;
+
+  @override
+  State<_BudgetDialog> createState() => _BudgetDialogState();
+}
+
+class _BudgetDialogState extends State<_BudgetDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: '${widget.entry.stepLimit}',
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final value = int.tryParse(_controller.text);
+    final valid = value != null && value >= 1 && value <= 100000;
+    return AlertDialog(
+      title: Text(l10n.queueBudgetTitle),
+      content: TextField(
+        key: const Key('queue-budget-field'),
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          helperText: l10n.queueBudgetHelp(widget.entry.stepsSpent ?? 0),
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.actionCancel),
+        ),
+        TextButton(
+          key: const Key('queue-budget-default'),
+          onPressed: () => Navigator.pop(context, (steps: null)),
+          child: Text(l10n.queueDefault),
+        ),
+        FilledButton(
+          key: const Key('queue-budget-save'),
+          onPressed: valid
+              ? () => Navigator.pop(context, (steps: value))
+              : null,
+          child: Text(l10n.queueBudgetSave),
+        ),
+      ],
     );
   }
 }
