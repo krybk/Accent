@@ -76,10 +76,11 @@ class AppLocalizationsRu extends AppLocalizations {
       'С его помощью при настройке устанавливается ключ, после чего пароль забывается';
 
   @override
-  String get fieldProviderKey => 'API-ключ Anthropic';
+  String get fieldProviderKey => 'Ключ Anthropic API (необязательно)';
 
   @override
-  String get fieldProviderKeyHelper => 'Без него стек не запустится';
+  String get fieldProviderKeyHelper =>
+      'Для чата не нужен: он идёт через панель управления. Нужен только для /v1/chat самого стека.';
 
   @override
   String get errorEnterHost => 'Укажите хост';
@@ -89,9 +90,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errorEnterRootPassword => 'Укажите пароль root';
-
-  @override
-  String get errorEnterProviderKey => 'Укажите API-ключ Anthropic';
 
   @override
   String get errorPortRange => 'Порт должен быть числом от 1 до 65535';
@@ -251,6 +249,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Проверка входа по ключу без пароля';
 
   @override
+  String get bootstrapStageDiscover =>
+      'Изучение того, что уже работает на сервере';
+
+  @override
   String get bootstrapStageInstallDocker => 'Установка Docker';
 
   @override
@@ -266,10 +268,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get bootstrapStageAwaitHealth => 'Ожидание ответа стека';
 
   @override
+  String get bootstrapStageIssueToken => 'Выдача токена этому приложению';
+
+  @override
   String get bootstrapStageReadCertificate => 'Чтение сертификата';
 
   @override
   String get bootstrapStageStoreCredentials => 'Сохранение учётных данных';
+
+  @override
+  String get bootstrapStageSkipped => 'Пропущено: на сервере это уже есть';
+
+  @override
+  String get discoveryExistingGateway =>
+      'Найден работающий шлюз Accent: подключаемся к нему, ничего не пересобираем';
+
+  @override
+  String get discoveryPlaneOnly =>
+      'Найдена панель управления без шлюза: ставим только шлюз';
+
+  @override
+  String get discoveryNothing => 'Ничего не найдено: разворачиваем стек';
 
   @override
   String get navChat => 'Чат';

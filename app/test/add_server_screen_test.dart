@@ -32,7 +32,6 @@ void main() {
       expect(find.text('Enter the host'), findsOneWidget);
       expect(find.text('Enter the username'), findsOneWidget);
       expect(find.text('Enter the root password'), findsOneWidget);
-      expect(find.text('Enter the Anthropic API key'), findsOneWidget);
       expect(
         find.text('Port must be a number between 1 and 65535'),
         findsOneWidget,
@@ -137,6 +136,17 @@ void main() {
 
       expect(handedBack.single, isNull);
       expect(await profiles.list(), isEmpty);
+    });
+
+    testWidgets('an empty Anthropic key is accepted', (tester) async {
+      final handedBack = await _openForm(tester, profiles);
+
+      await _fillAll(tester, providerKey: '');
+      await _tapSubmit(tester);
+
+      expect((await profiles.list()).single.host, '192.0.2.10');
+      expect(handedBack.single?.anthropicApiKey, '');
+      expect(find.text('Enter the Anthropic API key'), findsNothing);
     });
   });
 

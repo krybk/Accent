@@ -74,10 +74,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'The bootstrap installs a key with it and then drops it';
 
   @override
-  String get fieldProviderKey => 'Anthropic API key';
+  String get fieldProviderKey => 'Anthropic API key (optional)';
 
   @override
-  String get fieldProviderKeyHelper => 'The stack will not start without it';
+  String get fieldProviderKeyHelper =>
+      'Not needed for chat, which goes through the control plane. Only the stack\'s own /v1/chat uses it.';
 
   @override
   String get errorEnterHost => 'Enter the host';
@@ -87,9 +88,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorEnterRootPassword => 'Enter the root password';
-
-  @override
-  String get errorEnterProviderKey => 'Enter the Anthropic API key';
 
   @override
   String get errorPortRange => 'Port must be a number between 1 and 65535';
@@ -249,6 +247,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Checking the key works without the password';
 
   @override
+  String get bootstrapStageDiscover =>
+      'Looking at what the server already runs';
+
+  @override
   String get bootstrapStageInstallDocker => 'Installing Docker';
 
   @override
@@ -265,10 +267,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bootstrapStageAwaitHealth => 'Waiting for the stack to answer';
 
   @override
+  String get bootstrapStageIssueToken => 'Issuing this app a token';
+
+  @override
   String get bootstrapStageReadCertificate => 'Reading the certificate';
 
   @override
   String get bootstrapStageStoreCredentials => 'Storing the credentials';
+
+  @override
+  String get bootstrapStageSkipped => 'Skipped: the server already runs it';
+
+  @override
+  String get discoveryExistingGateway =>
+      'Found a running Accent gateway: connecting to it, nothing will be rebuilt';
+
+  @override
+  String get discoveryPlaneOnly =>
+      'Found a control plane without a gateway: installing only the gateway';
+
+  @override
+  String get discoveryNothing => 'Nothing found: deploying the stack';
 
   @override
   String get navChat => 'Chat';
