@@ -38,8 +38,10 @@ password its database was initialised with.
 
 ## Status
 
-Early development, nothing released yet — see [Releases](#releases) for what
-that needs.
+Version 0.1.0 is released: the signed APKs are on
+[v0.1.0](https://github.com/krybk/Accent/releases/tag/v0.1.0), and
+[Installing and adding a server](#installing-and-adding-a-server) says how to
+set one up.
 
 Standing up: the gateway (config, auth, routing, upstream requests, a container
 stack that builds and answers a liveness probe), the shared `protocol` package
@@ -63,11 +65,11 @@ moves a plan up, down, to the top or to the end, or holds and resumes it.
 
 ## Releases
 
-There are none yet, and no tag has been pushed. The release workflow triggers on
-`v*` only: a release is a decision, and the tag is where that decision is
-recorded.
+v0.1.0 is the first release. The release workflow triggers on `v*` only, and the
+tag is still the trigger: a release is a decision, and the tag is where that
+decision is recorded.
 
-Publishing a first one needs, in order:
+Each release needs, in order:
 
 1. **A signing keystore.** Not optional and not something to improvise later. An
    installed Android app can only be upgraded by a build carrying the same
@@ -102,6 +104,64 @@ whoever built it, and it is the thing an attacker cannot reproduce.
 
 Until a keystore exists, `flutter build apk --release` refuses locally too, by
 design; the debug build CI runs is unaffected.
+
+## Installing and adding a server
+
+Download from the release page `accent-0.1.0-arm64-v8a.apk`, which fits
+practically every current phone, or `accent-0.1.0-universal.apk` if you are
+unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
+emulators.
+
+Verify the download before installing it:
+
+```
+sha256sum -c SHA256SUMS.txt --ignore-missing
+apksigner verify --print-certs accent-0.1.0-arm64-v8a.apk
+```
+
+`apksigner` must print `certificate SHA-256 digest:` followed by the value
+below, the certificate shown above under Releases:
+
+```
+7b71191348cf05b2b87edb32926652f24974264a2a8304487a7da0c5e2fa5a7c
+```
+
+Android asks once to allow the browser or file manager that opens the APK to
+install unknown apps (Settings → Apps → Special app access → Install unknown
+apps). Later versions install over this one as long as they carry the same
+signature.
+
+To add a server, press the **Add a server** button on the servers screen; the
+screen it opens is titled "Add a server" too. Fill in:
+
+- **Name** — optional, the host is used when left blank;
+- **Host**;
+- **SSH port**;
+- **Username**;
+
+and, under "Used once, never stored":
+
+- **Root password** — the bootstrap installs a key with it and then drops it;
+- **Anthropic API key** — the stack will not start without it.
+
+Then press **Save the server**. The app opens "Deploying the stack" and ticks
+through its stages. On success it shows "The server is ready" and **Done**; on
+failure "The bootstrap failed" and **Close**. Adding the same server again is
+safe (see [How access works](#how-access-works)). The server then shows as
+"Bootstrapped" in the list.
+
+The bootstrap does the steps in the numbered list under
+[How access works](#how-access-works) and puts the stack in `/opt/accent`.
+
+Tapping the server opens:
+
+- **Plane** — the plane's state;
+- **Usage** — per-model token usage, with switches to turn each model tier off
+  and on (work for a tier that is off runs on its stand-in);
+- **Chat** — a streamed conversation with a model on the server, any message
+  can be sent to an open plan as guidance;
+- **Queue** — open plans in the order they will be taken, moved up, down, to
+  the top or to the end, held and resumed.
 
 ## Models
 
