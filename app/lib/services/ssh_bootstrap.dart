@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import '../models/server_profile.dart';
 import 'profile_repository.dart';
 import 'ssh_session.dart';
@@ -13,7 +15,7 @@ import 'ssh_session.dart';
 /// `package_info_plus`, and neither buys anything: a release is a tag, the tag
 /// and the pubspec version are already required to agree by `release.yml`, and a
 /// version bump is a visible commit either way.
-const String accentVersion = '0.1.0';
+const String accentVersion = '0.2.0';
 
 /// Where the server clones from.
 ///
@@ -27,7 +29,11 @@ const String accentRepositoryUrl = 'https://github.com/krybk/Accent.git';
 /// Where the clone lives on the server.
 const String accentInstallDirectory = '/opt/accent';
 
-/// The ten steps of a bootstrap, in the order they run.
+/// Where the control plane's socket lives on the server: the compose default of
+/// `PLANE_SOCKET_DIR`.
+const String accentPlaneSocketDirectory = '/run/accent-plane';
+
+/// The twelve steps of a bootstrap, in the order they run.
 ///
 /// Named rather than counted because this takes minutes, touches someone else's
 /// server and can fail at a dozen points; "something went wrong" after four
@@ -42,6 +48,9 @@ enum BootstrapStage {
 
   /// Reconnect with the key alone. The password is released here.
   keyOnlyConnect('Checking the key works without the password'),
+
+  /// Look for a running Accent gateway and the control plane's socket.
+  discover('Looking at what the server already runs'),
 
   /// Install Docker, unless `docker compose version` already answers.
   installDocker('Installing Docker'),
@@ -58,6 +67,9 @@ enum BootstrapStage {
   /// Poll the stack's own health check until it answers.
   awaitHealth('Waiting for the stack to answer'),
 
+  /// Write this app's token hash into an existing gateway's tokens directory.
+  issueToken('Issuing this app a token'),
+
   /// Read Caddy's internal CA root, which the app will pin.
   readCertificate('Reading the certificate'),
 
@@ -72,10 +84,24 @@ enum BootstrapStage {
   final String label;
 }
 
+/// What [BootstrapStage.discover] found on the server.
+enum ServerDiscovery {
+  /// A running Accent gateway to join.
+  existingGateway,
+
+  /// A control plane socket and no gateway.
+  planeOnly,
+
+  /// Neither.
+  nothing,
+}
+
 /// Something a bootstrap stage did.
 ///
 /// Every stage emits [BootstrapStageStarted] and then exactly one of
-/// [BootstrapStageSucceeded] or [BootstrapStageFailed]. A failure is terminal —
+/// [BootstrapStageSucceeded] or [BootstrapStageFailed] — or, when it does not
+/// apply to what [BootstrapStage.discover] found, only
+/// [BootstrapStageSkipped]. A failure is terminal —
 /// the run stops and the stream ends — so the last event of a run says whether
 /// it worked.
 sealed class BootstrapEvent {
@@ -104,6 +130,26 @@ final class BootstrapStageSucceeded extends BootstrapEvent {
   @override
   String toString() =>
       'BootstrapStageSucceeded(${stage.name}${detail == null ? '' : ': $detail'})';
+}
+
+/// [BootstrapStage.discover] finished, and what it found.
+final class BootstrapDiscovered extends BootstrapStageSucceeded {
+  const BootstrapDiscovered(this.discovery, [String? detail])
+    : super(BootstrapStage.discover, detail);
+
+  final ServerDiscovery discovery;
+
+  @override
+  String toString() =>
+      'BootstrapDiscovered(${discovery.name}${detail == null ? '' : ': $detail'})';
+}
+
+/// A stage that does not apply to what was discovered, and did not run.
+final class BootstrapStageSkipped extends BootstrapEvent {
+  const BootstrapStageSkipped(super.stage);
+
+  @override
+  String toString() => 'BootstrapStageSkipped(${stage.name})';
 }
 
 /// A stage failed, and the bootstrap stopped there.
@@ -172,6 +218,11 @@ final class RootPassword {
 /// Postgres sets its password only when it initialises its volume, so writing a
 /// fresh `POSTGRES_PASSWORD` over an existing volume would lock the stack out of
 /// its own database.
+///
+/// When [BootstrapStage.discover] finds a running gateway nothing is rebuilt,
+/// and nothing under the install directory or any `.env` is read or written.
+/// The app writes only the SHA-256 of its token into the gateway's tokens
+/// directory, and only Caddy's environment, never the gateway's, is inspected.
 class SshBootstrap {
   SshBootstrap({
     required SshSessionFactory sessions,
@@ -228,25 +279,16 @@ class SshBootstrap {
   ///
   /// [password] is emptied during [BootstrapStage.keyOnlyConnect] and is of no
   /// further use to the caller afterwards. [anthropicApiKey] is an input, not a
-  /// generated value — compose declares it `:?` and the stack will not start
-  /// without it — and it is stored as a secret, never on the profile.
-  ///
-  /// Throws [ArgumentError] on an empty [anthropicApiKey]. That is a caller
-  /// bug: the screen that collects it validates it, and discovering it here
-  /// would mean discovering it after several minutes of deploying.
+  /// generated value, and it is optional: when empty the stack starts without
+  /// LiteLLM (no `COMPOSE_PROFILES`), and chat, which goes through the control
+  /// plane, does not need it. It is stored as a secret, never on the profile,
+  /// and only when non-empty.
   Stream<BootstrapEvent> run({
     required ServerProfile profile,
     required RootPassword password,
-    required String anthropicApiKey,
+    String anthropicApiKey = '',
   }) async* {
     final providerKey = anthropicApiKey.trim();
-    if (providerKey.isEmpty) {
-      throw ArgumentError.value(
-        '',
-        'anthropicApiKey',
-        'The stack will not start without a provider key',
-      );
-    }
 
     final endpoint = SshEndpoint(
       host: profile.host,
@@ -301,61 +343,112 @@ class SshBootstrap {
         'the password is no longer needed',
       );
 
-      // 4. Docker.
-      yield const BootstrapStageStarted(BootstrapStage.installDocker);
-      final installed = await _installDocker(keySession);
-      yield BootstrapStageSucceeded(
-        BootstrapStage.installDocker,
-        installed ? 'installed Docker' : 'Docker was already installed',
-      );
+      // 4. What the server already runs.
+      yield const BootstrapStageStarted(BootstrapStage.discover);
+      final found = await _discover(keySession, profile);
+      yield BootstrapDiscovered(found.discovery, found.detail);
 
-      // 5. Sources, at a pinned ref.
-      yield const BootstrapStageStarted(BootstrapStage.checkout);
-      final ref = await _checkout(keySession);
-      yield BootstrapStageSucceeded(BootstrapStage.checkout, 'at $ref');
+      final String token;
+      final String certificate;
+      int? discoveredPort;
+      if (found.discovery == ServerDiscovery.existingGateway) {
+        yield const BootstrapStageSkipped(BootstrapStage.installDocker);
+        yield const BootstrapStageSkipped(BootstrapStage.checkout);
+        yield const BootstrapStageSkipped(BootstrapStage.writeEnvironment);
+        yield const BootstrapStageSkipped(BootstrapStage.startStack);
+        yield const BootstrapStageSkipped(BootstrapStage.awaitHealth);
 
-      // 6. Configuration.
-      yield const BootstrapStageStarted(BootstrapStage.writeEnvironment);
-      final token = await _writeEnvironment(keySession, profile, providerKey);
-      yield const BootstrapStageSucceeded(BootstrapStage.writeEnvironment);
+        // 5. A token for this app, in the gateway's tokens directory.
+        yield const BootstrapStageStarted(BootstrapStage.issueToken);
+        token = await _issueToken(keySession, profile, found);
+        yield const BootstrapStageSucceeded(
+          BootstrapStage.issueToken,
+          "wrote this app's token file",
+        );
 
-      // 7. Up.
-      yield const BootstrapStageStarted(BootstrapStage.startStack);
-      await _mustRun(
-        keySession,
-        BootstrapStage.startStack,
-        'starting the stack',
-        '$_cd && docker compose -f gateway/docker-compose.yml up -d --build',
-      );
-      yield const BootstrapStageSucceeded(BootstrapStage.startStack);
+        // 6. The CA root the app will pin.
+        yield const BootstrapStageStarted(BootstrapStage.readCertificate);
+        certificate = await _readCertificateAuthority(
+          keySession,
+          'docker exec ${_quote(found.caddyId)} '
+          'cat /data/caddy/pki/authorities/local/root.crt',
+        );
+        yield const BootstrapStageSucceeded(BootstrapStage.readCertificate);
+        discoveredPort = found.port;
+      } else {
+        // 5. Docker.
+        yield const BootstrapStageStarted(BootstrapStage.installDocker);
+        final installed = await _installDocker(keySession);
+        yield BootstrapStageSucceeded(
+          BootstrapStage.installDocker,
+          installed ? 'installed Docker' : 'Docker was already installed',
+        );
 
-      // 8. Health.
-      yield const BootstrapStageStarted(BootstrapStage.awaitHealth);
-      final attempts = await _awaitHealth(keySession);
-      yield BootstrapStageSucceeded(
-        BootstrapStage.awaitHealth,
-        'answered on attempt $attempts',
-      );
+        // 6. Sources, at a pinned ref.
+        yield const BootstrapStageStarted(BootstrapStage.checkout);
+        final ref = await _checkout(keySession);
+        yield BootstrapStageSucceeded(BootstrapStage.checkout, 'at $ref');
 
-      // 9. The CA root the app will pin.
-      yield const BootstrapStageStarted(BootstrapStage.readCertificate);
-      final certificate = await _readCertificateAuthority(keySession);
-      yield const BootstrapStageSucceeded(BootstrapStage.readCertificate);
+        // 7. Configuration.
+        yield const BootstrapStageStarted(BootstrapStage.writeEnvironment);
+        token = await _writeEnvironment(
+          keySession,
+          profile,
+          providerKey,
+          planeSocket: found.discovery == ServerDiscovery.planeOnly,
+        );
+        yield const BootstrapStageSucceeded(BootstrapStage.writeEnvironment);
 
-      // 10. Keep what the app needs to talk to the gateway from now on.
+        // 8. Up.
+        yield const BootstrapStageStarted(BootstrapStage.startStack);
+        await _mustRun(
+          keySession,
+          BootstrapStage.startStack,
+          'starting the stack',
+          '$_cd && docker compose -f gateway/docker-compose.yml up -d --build',
+        );
+        yield const BootstrapStageSucceeded(BootstrapStage.startStack);
+
+        // 9. Health.
+        yield const BootstrapStageStarted(BootstrapStage.awaitHealth);
+        final attempts = await _awaitHealth(keySession);
+        yield BootstrapStageSucceeded(
+          BootstrapStage.awaitHealth,
+          'answered on attempt $attempts',
+        );
+
+        // The stack's own token is in its .env; there is nothing to issue.
+        yield const BootstrapStageSkipped(BootstrapStage.issueToken);
+
+        // 10. The CA root the app will pin.
+        yield const BootstrapStageStarted(BootstrapStage.readCertificate);
+        certificate = await _readCertificateAuthority(
+          keySession,
+          '$_cd && docker compose -f gateway/docker-compose.yml exec -T caddy '
+          'cat /data/caddy/pki/authorities/local/root.crt',
+        );
+        yield const BootstrapStageSucceeded(BootstrapStage.readCertificate);
+      }
+
+      // 11. Keep what the app needs to talk to the gateway from now on.
       yield const BootstrapStageStarted(BootstrapStage.storeCredentials);
       await _guard(
         BootstrapStage.storeCredentials,
         'storing the credentials',
         () async {
           await _profiles.storeSshPrivateKey(profile.id, key.privateKeyPem);
-          await _profiles.storeProviderKey(profile.id, providerKey);
+          if (providerKey.isNotEmpty) {
+            await _profiles.storeProviderKey(profile.id, providerKey);
+          }
           await _profiles.storeGatewayCredentials(
             profile.id,
             token: token,
             certificatePem: certificate,
           );
-          await _profiles.save(profile.copyWith(bootstrapped: true));
+          // A null port keeps the profile's own.
+          await _profiles.save(
+            profile.copyWith(bootstrapped: true, gatewayPort: discoveredPort),
+          );
         },
       );
       yield const BootstrapStageSucceeded(BootstrapStage.storeCredentials);
@@ -546,8 +639,9 @@ class SshBootstrap {
   Future<String> _writeEnvironment(
     SshSession session,
     ServerProfile profile,
-    String providerKey,
-  ) async {
+    String providerKey, {
+    bool planeSocket = false,
+  }) async {
     const stage = BootstrapStage.writeEnvironment;
     final id = profile.id;
 
@@ -572,6 +666,12 @@ class SshBootstrap {
     final litellmKey = _orNew(stack?.litellmMasterKey);
     final postgresPassword = _orNew(stack?.postgresPassword);
 
+    // LiteLLM sits behind that compose profile; without a key the stack starts
+    // without it.
+    final optional =
+        (providerKey.isNotEmpty ? 'COMPOSE_PROFILES=litellm\n' : '') +
+        (planeSocket ? 'PLANE_SOCKET_DIR=$accentPlaneSocketDirectory\n' : '');
+
     final env =
         '''
 # Written by Accent during bootstrap. Do not edit by hand.
@@ -585,7 +685,7 @@ POSTGRES_PASSWORD=$postgresPassword
 ANTHROPIC_API_KEY=$providerKey
 GATEWAY_PORT=${profile.gatewayPort}
 GATEWAY_HOST=${profile.host}
-''';
+$optional''';
 
     // Compose reads the `.env` beside the compose file, which is why this is
     // `gateway/.env` and not one in the project root.
@@ -652,14 +752,16 @@ GATEWAY_HOST=${profile.host}
   /// The root, not the leaf: the leaf is reissued on renewal and a pin on it
   /// would break the app for no reason. `tls internal` in
   /// `gateway/caddy/Caddyfile` is why there is a CA to pin at all.
-  Future<String> _readCertificateAuthority(SshSession session) async {
+  Future<String> _readCertificateAuthority(
+    SshSession session,
+    String command,
+  ) async {
     const stage = BootstrapStage.readCertificate;
     final result = await _mustRun(
       session,
       stage,
       'reading the CA root',
-      '$_cd && docker compose -f gateway/docker-compose.yml exec -T caddy '
-          'cat /data/caddy/pki/authorities/local/root.crt',
+      command,
     );
     final pem = result.stdout.trim();
     if (!pem.contains('BEGIN CERTIFICATE')) {
@@ -673,6 +775,196 @@ GATEWAY_HOST=${profile.host}
       );
     }
     return pem;
+  }
+
+  /// Looks, read-only, for a running Accent gateway and the plane socket.
+  ///
+  /// The gateway container's own environment is never inspected — it holds the
+  /// secrets. Caddy's holds only the host, which is what the certificate is
+  /// issued for.
+  Future<_Discovered> _discover(
+    SshSession session,
+    ServerProfile profile,
+  ) async {
+    const stage = BootstrapStage.discover;
+    final probe = await _run(
+      session,
+      stage,
+      'looking for an Accent gateway',
+      "command -v docker >/dev/null 2>&1 && docker ps "
+          "--filter label=accent.gateway.tokens-dir "
+          "--format '{{.ID}} {{.Label \"com.docker.compose.project\"}} "
+          "{{.Label \"accent.gateway.tokens-dir\"}}'",
+    );
+    final hasGateway = probe.ok && probe.stdout.trim().isNotEmpty;
+
+    var gatewayId = '';
+    var project = '';
+    var tokensDirectory = '';
+    var caddyId = '';
+    var port = 0;
+    if (hasGateway) {
+      final fields = probe.stdout
+          .trim()
+          .split('\n')
+          .first
+          .split(RegExp(r'\s+'));
+      if (fields.length < 3) {
+        throw _StageFailure(stage, 'found a gateway outside a compose project');
+      }
+      gatewayId = fields[0];
+      project = fields[1];
+      tokensDirectory = fields[2];
+
+      final caddy = await _mustRun(
+        session,
+        stage,
+        "looking for the gateway's Caddy",
+        "docker ps --filter ${_quote('label=com.docker.compose.project=$project')} "
+            "--filter label=com.docker.compose.service=caddy --format '{{.ID}}'",
+      );
+      caddyId = caddy.stdout.trim().split('\n').first.trim();
+      if (caddyId.isEmpty) {
+        throw _StageFailure(stage, 'found a gateway without its Caddy');
+      }
+
+      final published = await _mustRun(
+        session,
+        stage,
+        'reading the port Caddy publishes',
+        'docker port ${_quote(caddyId)} 8443/tcp',
+      );
+      final line = published.stdout.trim().split('\n').first;
+      final parsed = int.tryParse(
+        line.substring(line.lastIndexOf(':') + 1).trim(),
+      );
+      if (parsed == null) {
+        throw _StageFailure(
+          stage,
+          'could not read the port Caddy publishes',
+          published.stdout,
+        );
+      }
+      port = parsed;
+
+      // Caddy's environment, not the gateway's: the gateway container holds the
+      // secrets, Caddy's holds only the host the certificate is issued for.
+      final environment = await _mustRun(
+        session,
+        stage,
+        "reading Caddy's environment",
+        "docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "
+            '${_quote(caddyId)}',
+      );
+      const prefix = 'GATEWAY_HOST=';
+      String? host;
+      for (final entry in environment.stdout.split('\n')) {
+        if (entry.startsWith(prefix)) {
+          host = entry.substring(prefix.length).trim();
+          break;
+        }
+      }
+      if (host == null) {
+        throw _StageFailure(stage, 'Caddy has no GATEWAY_HOST');
+      }
+      if (host != profile.host) {
+        throw _StageFailure(
+          stage,
+          "the gateway's certificate is issued for $host; "
+          'add the server with that address',
+        );
+      }
+    }
+
+    final plane = (await _run(
+      session,
+      stage,
+      'looking for the plane socket',
+      'test -S ${_quote('$accentPlaneSocketDirectory/plane.sock')}',
+    )).ok;
+
+    if (!hasGateway) {
+      final busy = await _run(
+        session,
+        stage,
+        'checking the gateway port is free',
+        "command -v docker >/dev/null 2>&1 && docker ps "
+            "--filter publish=${profile.gatewayPort} --format '{{.Names}}'",
+      );
+      final names = busy.stdout
+          .split('\n')
+          .map((name) => name.trim())
+          .where((name) => name.isNotEmpty)
+          .toList();
+      if (busy.ok && names.isNotEmpty) {
+        throw _StageFailure(
+          stage,
+          'port ${profile.gatewayPort} is already published by '
+          '${names.join(', ')}',
+        );
+      }
+    }
+
+    if (hasGateway) {
+      return _Discovered(
+        ServerDiscovery.existingGateway,
+        'gateway in compose project $project on port $port; '
+        'plane socket ${plane ? 'present' : 'absent'}',
+        gatewayId: gatewayId,
+        caddyId: caddyId,
+        tokensDirectory: tokensDirectory,
+        port: port,
+      );
+    }
+    if (plane) {
+      return const _Discovered(
+        ServerDiscovery.planeOnly,
+        'plane socket present, no gateway',
+      );
+    }
+    return const _Discovered(
+      ServerDiscovery.nothing,
+      'no gateway, no plane socket',
+    );
+  }
+
+  /// Writes this app's token into the existing gateway's tokens directory and
+  /// returns the token.
+  ///
+  /// Only the SHA-256 of the token goes into the command, and a hash is not a
+  /// secret. The token itself never appears in a command, an event or a log.
+  /// The file is named by profile id, so a re-run rewrites it instead of adding
+  /// one, and deleting it revokes only this app.
+  Future<String> _issueToken(
+    SshSession session,
+    ServerProfile profile,
+    _Discovered found,
+  ) async {
+    const stage = BootstrapStage.issueToken;
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(profile.id)) {
+      throw _StageFailure(stage, 'the profile id cannot name a token file');
+    }
+    final stored = await _guard(
+      stage,
+      'reading the stored token',
+      () => _profiles.gatewayToken(profile.id),
+    );
+    final token = _orNew(stored);
+    final hash = 'sha256:${sha256.convert(utf8.encode(token))}';
+    final dir = found.tokensDirectory;
+    final file = '$dir/${profile.id}';
+    final temporary = '$file.tmp';
+    final script =
+        "umask 077 && mkdir -p ${_quote(dir)} "
+        "&& printf '%s\\n' ${_quote(hash)} > ${_quote(temporary)} "
+        '&& mv -f ${_quote(temporary)} ${_quote(file)}';
+    await _mustRun(
+      session,
+      stage,
+      'writing the token file',
+      'docker exec ${_quote(found.gatewayId)} sh -c ${_quote(script)}',
+    );
+    return token;
   }
 
   /// A stored secret, or a new one.
@@ -755,6 +1047,25 @@ GATEWAY_HOST=${profile.host}
 /// through here, but a repository URL comes from a constructor argument and an
 /// unquoted argument is how a path with a space becomes two arguments.
 String _quote(String value) => "'${value.replaceAll("'", r"'\''")}'";
+
+/// What [SshBootstrap._discover] found, with the ids later stages need.
+class _Discovered {
+  const _Discovered(
+    this.discovery,
+    this.detail, {
+    this.gatewayId = '',
+    this.caddyId = '',
+    this.tokensDirectory = '',
+    this.port = 0,
+  });
+
+  final ServerDiscovery discovery;
+  final String detail;
+  final String gatewayId;
+  final String caddyId;
+  final String tokensDirectory;
+  final int port;
+}
 
 /// A stage that failed, on its way to becoming a [BootstrapStageFailed].
 ///

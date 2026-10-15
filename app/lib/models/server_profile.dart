@@ -36,13 +36,17 @@ class ServerProfile {
 
   Uri get gatewayUri => Uri(scheme: 'https', host: host, port: gatewayPort);
 
-  ServerProfile copyWith({String? name, bool? bootstrapped}) => ServerProfile(
+  ServerProfile copyWith({
+    String? name,
+    bool? bootstrapped,
+    int? gatewayPort,
+  }) => ServerProfile(
     id: id,
     name: name ?? this.name,
     host: host,
     username: username,
     port: port,
-    gatewayPort: gatewayPort,
+    gatewayPort: gatewayPort ?? this.gatewayPort,
     bootstrapped: bootstrapped ?? this.bootstrapped,
   );
 
