@@ -14,7 +14,7 @@ import 'config.dart';
 import 'plane_proxy.dart';
 import 'upstream_request.dart';
 
-const gatewayVersion = '0.1.0';
+const gatewayVersion = '0.2.0';
 
 Response _json(Object body, {int status = 200}) => Response(
   status,
@@ -35,13 +35,15 @@ Router buildRouter(GatewayConfig config, http.Client client) {
   router.get('/live', (Request _) => Response.ok('ok'));
 
   router.get('/v1/health', (Request _) async {
+    final litellmUrl = config.litellmUrl;
     final services = <ServiceStatus>[
-      await _probe(
-        'litellm',
-        client,
-        config.litellmUrl.resolve('/health/liveliness'),
-        config.litellmKey,
-      ),
+      if (litellmUrl != null)
+        await _probe(
+          'litellm',
+          client,
+          litellmUrl.resolve('/health/liveliness'),
+          config.litellmKey,
+        ),
     ];
     final status = HealthStatus(version: gatewayVersion, services: services);
     // 503 when degraded, so the app can react without parsing the body.
@@ -60,6 +62,17 @@ Router buildRouter(GatewayConfig config, http.Client client) {
   );
 
   router.post('/v1/chat', (Request request) async {
+    final litellmUrl = config.litellmUrl;
+    if (litellmUrl == null) {
+      return _error(
+        const ApiError(
+          code: 'chat_not_configured',
+          message:
+              "no model provider is configured on this server; the app's chat uses /v1/plane/chat",
+        ),
+        status: 503,
+      );
+    }
     final ChatRequest parsed;
     try {
       parsed = ChatRequest.fromJson(
@@ -85,7 +98,7 @@ Router buildRouter(GatewayConfig config, http.Client client) {
     }
 
     return Response.ok(
-      _streamChat(config, client, parsed),
+      _streamChat(config, litellmUrl, client, parsed),
       headers: {
         'content-type': 'text/event-stream',
         'cache-control': 'no-cache',
@@ -129,13 +142,14 @@ Future<ServiceStatus> _probe(
 /// verbatim so the app never depends on an upstream format we do not control.
 Stream<List<int>> _streamChat(
   GatewayConfig config,
+  Uri litellmUrl,
   http.Client client,
   ChatRequest request,
 ) async* {
   final body = buildUpstreamRequest(tier: request.model, request: request);
 
   final upstream =
-      http.Request('POST', config.litellmUrl.resolve('/v1/chat/completions'))
+      http.Request('POST', litellmUrl.resolve('/v1/chat/completions'))
         ..headers.addAll({
           'authorization': 'Bearer ${config.litellmKey}',
           'content-type': 'application/json',
