@@ -58,6 +58,8 @@ written and carries the conversation on from one message to the next. Any
 message can be sent to an open plan as guidance; nothing is posted until the
 owner presses Send in that dialog. The usage screen also switches each model
 tier off and on, and work for a tier that is off runs on its stand-in.
+The queue screen lists the open plans in the order they will be taken, and
+moves a plan up, down, to the top or to the end, or holds and resumes it.
 
 ## Releases
 
