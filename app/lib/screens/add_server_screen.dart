@@ -26,9 +26,9 @@ final class NewServer {
   /// In its box, so the bootstrap can empty it the moment the key works.
   final RootPassword password;
 
-  /// The stack declares `ANTHROPIC_API_KEY` with `:?` in its compose file and
-  /// refuses to start without it, which is why it is typed here alongside the
-  /// password rather than asked for later.
+  /// Optional: empty when the user left it blank, in which case the stack
+  /// starts without LiteLLM. Chat goes through the control plane and does not
+  /// need it.
   final String anthropicApiKey;
 
   /// Names what it carries without revealing any of it, for the same reason
@@ -261,8 +261,6 @@ class _AddServerScreenState extends State<AddServerScreen> {
                   helperText: l10n.fieldProviderKeyHelper,
                   border: const OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    _required(value, l10n.errorEnterProviderKey),
               ),
               if (_failure != null) ...[
                 const SizedBox(height: 16),
