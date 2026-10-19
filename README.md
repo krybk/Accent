@@ -38,8 +38,8 @@ password its database was initialised with.
 
 ## Status
 
-Version 0.2.1 is released: the signed APKs are on
-[v0.2.1](https://github.com/krybk/Accent/releases/tag/v0.2.1), and
+Version 0.2.2 is released: the signed APKs are on
+[v0.2.2](https://github.com/krybk/Accent/releases/tag/v0.2.2), and
 [Installing and adding a server](#installing-and-adding-a-server) says how to
 set one up.
 
@@ -65,7 +65,7 @@ moves a plan up, down, to the top or to the end, or holds and resumes it.
 
 ## Releases
 
-v0.1.0 was the first release and v0.2.1 is the latest. The release workflow triggers on `v*` only, and the
+v0.1.0 was the first release and v0.2.2 is the latest. The release workflow triggers on `v*` only, and the
 tag is still the trigger: a release is a decision, and the tag is where that
 decision is recorded.
 
@@ -107,7 +107,7 @@ design; the debug build CI runs is unaffected.
 
 ## Installing and adding a server
 
-Download from the release page `accent-0.2.1-arm64-v8a.apk`, which fits
+Download from the release page `accent-0.2.2-arm64-v8a.apk`, which fits
 practically every current phone, or `accent-0.2.1-universal.apk` if you are
 unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
 emulators.
