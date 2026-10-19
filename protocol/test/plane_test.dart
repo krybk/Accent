@@ -106,6 +106,52 @@ void main() {
     check(again);
   });
 
+  test(
+    'PlanSummary slices: absent fields default, present ones round-trip',
+    () {
+      final old = PlanSummary.fromJson({
+        'id': '1',
+        'title': 't',
+        'status': 'running',
+        'tasks': <Object>[],
+      });
+      expect(old.slice, 1);
+      expect(old.slicesExpected, isNull);
+      expect(old.earlierSlices, isEmpty);
+      expect(old.later, isEmpty);
+
+      final p = PlanSummary.fromJson({
+        'id': '362',
+        'title': 't',
+        'status': 'running',
+        'tasks': <Object>[],
+        'slice': 2,
+        'slices_expected': 3,
+        'earlier_slices': [
+          {
+            'slice': 1,
+            'tasks': [
+              {'id': 't1', 'title': 'a', 'target': 'o/r', 'done': true},
+            ],
+          },
+        ],
+        'later': [
+          {'id': 'R2', 'quote': 'q'},
+        ],
+      });
+      void check(PlanSummary p) {
+        expect(p.slice, 2);
+        expect(p.slicesExpected, 3);
+        expect(p.earlierSlices.single.slice, 1);
+        expect(p.earlierSlices.single.tasks.single.done, isTrue);
+        expect(p.later.single.quote, 'q');
+      }
+
+      check(p);
+      check(PlanSummary.fromJson(p.toJson()));
+    },
+  );
+
   test('PlaneStatus round-trips with every nullable field present', () {
     final status = PlaneStatus.fromJson({
       'generated_at': '2026-10-12T10:00:00.000Z',

@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -126,6 +127,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planeNoPlans => 'No plans';
+
+  @override
+  String planeSliceOf(int slice, int total) {
+    return 'Stage $slice of $total';
+  }
+
+  @override
+  String planeSlice(int slice) {
+    return 'Stage $slice';
+  }
+
+  @override
+  String planeSliceNow(int slice) {
+    return 'Stage $slice — now';
+  }
+
+  @override
+  String planeSliceDone(int slice, int done, int total) {
+    return 'Stage $slice — $done of $total tasks done';
+  }
+
+  @override
+  String get planeLater => 'Later stages';
 
   @override
   String get providerCurrent => 'current';

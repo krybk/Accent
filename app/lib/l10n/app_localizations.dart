@@ -326,6 +326,36 @@ abstract class AppLocalizations {
   /// **'No plans'**
   String get planeNoPlans;
 
+  /// No description provided for @planeSliceOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage {slice} of {total}'**
+  String planeSliceOf(int slice, int total);
+
+  /// No description provided for @planeSlice.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage {slice}'**
+  String planeSlice(int slice);
+
+  /// No description provided for @planeSliceNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage {slice} — now'**
+  String planeSliceNow(int slice);
+
+  /// No description provided for @planeSliceDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage {slice} — {done} of {total} tasks done'**
+  String planeSliceDone(int slice, int done, int total);
+
+  /// No description provided for @planeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later stages'**
+  String get planeLater;
+
   /// No description provided for @providerCurrent.
   ///
   /// In en, this message translates to:

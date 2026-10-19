@@ -179,19 +179,98 @@ class PlanTaskSummary {
   };
 }
 
+/// One task of an earlier slice of a plan.
+class SliceTaskSummary {
+  const SliceTaskSummary({
+    required this.id,
+    required this.title,
+    required this.target,
+    required this.done,
+  });
+
+  final String id;
+  final String title;
+  final String target;
+  final bool done;
+
+  factory SliceTaskSummary.fromJson(Map<String, dynamic> json) =>
+      SliceTaskSummary(
+        id: json['id'] as String,
+        title: json['title'] as String,
+        target: (json['target'] as String?) ?? '',
+        done: json['done'] as bool,
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'target': target,
+    'done': done,
+  };
+}
+
+/// A finished slice of a plan and its tasks.
+class SliceSummary {
+  const SliceSummary({required this.slice, required this.tasks});
+
+  final int slice;
+  final List<SliceTaskSummary> tasks;
+
+  factory SliceSummary.fromJson(Map<String, dynamic> json) => SliceSummary(
+    slice: json['slice'] as int,
+    tasks: (json['tasks'] as List)
+        .map((e) => SliceTaskSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'slice': slice,
+    'tasks': tasks.map((e) => e.toJson()).toList(),
+  };
+}
+
+/// A requirement of the request left for a later slice.
+class LaterRequirement {
+  const LaterRequirement({required this.id, required this.quote});
+
+  final String id;
+  final String quote;
+
+  factory LaterRequirement.fromJson(Map<String, dynamic> json) =>
+      LaterRequirement(
+        id: json['id'] as String,
+        quote: (json['quote'] as String?) ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {'id': id, 'quote': quote};
+}
+
 /// One plan and its tasks; [id] is opaque.
+///
+/// A plan runs in slices: [tasks] are the running slice's, [slice] its number,
+/// [slicesExpected] how many the director expects (null when it has not said),
+/// [earlierSlices] the finished ones and [later] what is left for later slices.
+/// A server older than these fields sends none of them: slice 1, nothing else.
 class PlanSummary {
   const PlanSummary({
     required this.id,
     required this.title,
     required this.status,
     required this.tasks,
+    this.slice = 1,
+    this.slicesExpected,
+    this.earlierSlices = const [],
+    this.later = const [],
   });
 
   final String id;
   final String title;
   final String status;
   final List<PlanTaskSummary> tasks;
+  final int slice;
+  final int? slicesExpected;
+  final List<SliceSummary> earlierSlices;
+  final List<LaterRequirement> later;
 
   factory PlanSummary.fromJson(Map<String, dynamic> json) => PlanSummary(
     id: json['id'] as String,
@@ -200,6 +279,14 @@ class PlanSummary {
     tasks: (json['tasks'] as List)
         .map((e) => PlanTaskSummary.fromJson(e as Map<String, dynamic>))
         .toList(),
+    slice: (json['slice'] as int?) ?? 1,
+    slicesExpected: json['slices_expected'] as int?,
+    earlierSlices: ((json['earlier_slices'] as List?) ?? const [])
+        .map((e) => SliceSummary.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    later: ((json['later'] as List?) ?? const [])
+        .map((e) => LaterRequirement.fromJson(e as Map<String, dynamic>))
+        .toList(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -207,6 +294,10 @@ class PlanSummary {
     'title': title,
     'status': status,
     'tasks': tasks.map((e) => e.toJson()).toList(),
+    'slice': slice,
+    'slices_expected': slicesExpected,
+    'earlier_slices': earlierSlices.map((e) => e.toJson()).toList(),
+    'later': later.map((e) => e.toJson()).toList(),
   };
 }
 
