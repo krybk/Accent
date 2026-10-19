@@ -45,6 +45,48 @@
   "planeSectionPaused": "Paused models",
   "planeSectionActions": "Quick actions",
   "planeNoPlans": "No plans",
+  "planeSliceOf": "Stage {slice} of {total}",
+  "@planeSliceOf": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planeSlice": "Stage {slice}",
+  "@planeSlice": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      }
+    }
+  },
+  "planeSliceNow": "Stage {slice} — now",
+  "@planeSliceNow": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      }
+    }
+  },
+  "planeSliceDone": "Stage {slice} — {done} of {total} tasks done",
+  "@planeSliceDone": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      },
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "planeLater": "Later stages",
   "providerCurrent": "current",
   "providerNoKey": "no key",
   "providerCooling": "cooling until {until} — {reason}",

@@ -131,6 +131,79 @@ void main() {
     );
   });
 
+  testWidgets('a plan without slice fields reads as stage 1', (tester) async {
+    await pumpScreen(tester, handler);
+    expect(find.text('active · Stage 1'), findsOneWidget);
+    expect(find.text('Later stages'), findsNothing);
+  });
+
+  testWidgets('stages: number, earlier ones folded, later ones listed', (
+    tester,
+  ) async {
+    Future<http.Response> sliced(http.Request request) async {
+      if (request.method == 'GET' && request.url.path == '/v1/plane/plans') {
+        return _json({
+          'plans': [
+            {
+              'id': '362',
+              'title': 'Interface',
+              'status': 'running',
+              'slice': 2,
+              'slices_expected': 3,
+              'tasks': [
+                {
+                  'id': 't1',
+                  'title': 'Merge pages',
+                  'status': 'running',
+                  'target': 'o/sp3000',
+                  'subtasks_done': 3,
+                  'subtasks_total': 6,
+                },
+              ],
+              'earlier_slices': [
+                {
+                  'slice': 1,
+                  'tasks': [
+                    {
+                      'id': 't1',
+                      'title': 'Design system',
+                      'target': 'o/sp3000',
+                      'done': true,
+                    },
+                    {
+                      'id': 't2',
+                      'title': 'Home map',
+                      'target': 'o/sp3000',
+                      'done': true,
+                    },
+                  ],
+                },
+              ],
+              'later': [
+                {'id': 'R30', 'quote': 'screenshots in both themes'},
+              ],
+            },
+          ],
+        });
+      }
+      return handler(request);
+    }
+
+    await pumpScreen(tester, sliced);
+    expect(find.text('running · Stage 2 of 3'), findsOneWidget);
+    expect(find.text('Stage 1 — 2 of 2 tasks done'), findsOneWidget);
+    expect(find.text('Design system'), findsNothing, reason: 'folded');
+    expect(find.text('Stage 2 — now'), findsOneWidget);
+    expect(find.text('o/sp3000 · 3/6'), findsOneWidget);
+    await tester.tap(find.text('Stage 1 — 2 of 2 tasks done'));
+    await tester.pumpAndSettle();
+    expect(find.text('Design system'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Later stages'), 100);
+    await tester.tap(find.text('Later stages'));
+    await tester.pumpAndSettle();
+    expect(find.text('screenshots in both themes'), findsOneWidget);
+  });
+
   testWidgets('cooling provider shown, empty paused section hidden', (
     tester,
   ) async {

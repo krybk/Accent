@@ -171,10 +171,47 @@ class _PlaneScreenState extends State<PlaneScreen> {
               else
                 for (final plan in plans.plans)
                   ExpansionTile(
+                    key: Key('plan-${plan.id}'),
                     title: Text(plan.title),
-                    subtitle: Text(plan.status),
+                    subtitle: Text(
+                      '${plan.status} · ${plan.slicesExpected != null ? l10n.planeSliceOf(plan.slice, plan.slicesExpected!) : l10n.planeSlice(plan.slice)}',
+                    ),
                     initiallyExpanded: true,
                     children: [
+                      for (final earlier in plan.earlierSlices)
+                        ExpansionTile(
+                          key: Key('plan-${plan.id}-slice-${earlier.slice}'),
+                          leading: const Icon(Icons.history),
+                          title: Text(
+                            l10n.planeSliceDone(
+                              earlier.slice,
+                              earlier.tasks.where((t) => t.done).length,
+                              earlier.tasks.length,
+                            ),
+                          ),
+                          children: [
+                            for (final task in earlier.tasks)
+                              ListTile(
+                                dense: true,
+                                leading: Icon(
+                                  task.done
+                                      ? Icons.check_circle
+                                      : Icons.radio_button_unchecked,
+                                ),
+                                title: Text(task.title),
+                                subtitle: Text(task.target),
+                              ),
+                          ],
+                        ),
+                      if (plan.earlierSlices.isNotEmpty ||
+                          plan.later.isNotEmpty)
+                        ListTile(
+                          dense: true,
+                          title: Text(
+                            l10n.planeSliceNow(plan.slice),
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
                       for (final task in plan.tasks)
                         ListTile(
                           leading: Icon(
@@ -188,6 +225,22 @@ class _PlaneScreenState extends State<PlaneScreen> {
                                 ? '${task.target} · ${task.subtasksDone}/${task.subtasksTotal}'
                                 : task.target,
                           ),
+                        ),
+                      if (plan.later.isNotEmpty)
+                        ExpansionTile(
+                          key: Key('plan-${plan.id}-later'),
+                          leading: const Icon(Icons.upcoming),
+                          title: Text(l10n.planeLater),
+                          children: [
+                            for (final r in plan.later)
+                              ListTile(
+                                dense: true,
+                                leading: const Icon(
+                                  Icons.radio_button_unchecked,
+                                ),
+                                title: Text(r.quote),
+                              ),
+                          ],
                         ),
                     ],
                   ),
