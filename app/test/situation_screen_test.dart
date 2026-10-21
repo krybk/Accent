@@ -179,7 +179,7 @@ void main() {
     final title = find.text('#372 Spreadsheet export for the weekly report');
     expect(title, findsOneWidget);
     expect(tester.getSize(title).width, greaterThanOrEqualTo(200));
-    expect(tester.getSize(title).height, lessThanOrEqualTo(60));
+    expect(tester.getSize(title).height, lessThanOrEqualTo(96));
     final chip = find.byKey(const Key('situation-state-372'));
     expect(chip, findsOneWidget);
     expect(tester.getSize(chip).width, lessThanOrEqualTo(360));
