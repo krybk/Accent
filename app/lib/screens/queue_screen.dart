@@ -1,9 +1,9 @@
 import 'package:accent_protocol/protocol.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/gateway_client.dart';
+import 'plan_dialogs.dart';
 
 enum _RowAction { up, down, top, bottom, hold, resume, priority, budget }
 
@@ -57,35 +57,13 @@ class _QueueScreenState extends State<QueueScreen> {
       _post(() => widget.client.moveInQueue(e.id, verb));
 
   Future<void> _askPriority(PlaneQueueEntry e) async {
-    final l10n = AppLocalizations.of(context);
-    final r = await showDialog<({int? priority})>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(l10n.queuePriorityTitle),
-        children: [
-          for (var n = 1; n <= 5; n++)
-            SimpleDialogOption(
-              key: Key('queue-priority-option-$n'),
-              onPressed: () => Navigator.pop(ctx, (priority: n)),
-              child: Text('$n'),
-            ),
-          SimpleDialogOption(
-            key: const Key('queue-priority-option-default'),
-            onPressed: () => Navigator.pop(ctx, (priority: null)),
-            child: Text(l10n.queueDefault),
-          ),
-        ],
-      ),
-    );
+    final r = await showPlanPriorityDialog(context);
     if (r == null || !mounted) return;
     await _post(() => widget.client.setPlanPriority(e.id, r.priority));
   }
 
   Future<void> _askBudget(PlaneQueueEntry e) async {
-    final r = await showDialog<({int? steps})>(
-      context: context,
-      builder: (_) => _BudgetDialog(entry: e),
-    );
+    final r = await showPlanBudgetDialog(context, e);
     if (r == null || !mounted) return;
     await _post(() => widget.client.setPlanBudget(e.id, r.steps));
   }
@@ -231,65 +209,6 @@ class _QueueScreenState extends State<QueueScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BudgetDialog extends StatefulWidget {
-  const _BudgetDialog({required this.entry});
-
-  final PlaneQueueEntry entry;
-
-  @override
-  State<_BudgetDialog> createState() => _BudgetDialogState();
-}
-
-class _BudgetDialogState extends State<_BudgetDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: '${widget.entry.stepLimit}',
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final value = int.tryParse(_controller.text);
-    final valid = value != null && value >= 1 && value <= 100000;
-    return AlertDialog(
-      title: Text(l10n.queueBudgetTitle),
-      content: TextField(
-        key: const Key('queue-budget-field'),
-        controller: _controller,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          helperText: l10n.queueBudgetHelp(widget.entry.stepsSpent ?? 0),
-        ),
-        onChanged: (_) => setState(() {}),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(l10n.actionCancel),
-        ),
-        TextButton(
-          key: const Key('queue-budget-default'),
-          onPressed: () => Navigator.pop(context, (steps: null)),
-          child: Text(l10n.queueDefault),
-        ),
-        FilledButton(
-          key: const Key('queue-budget-save'),
-          onPressed: valid
-              ? () => Navigator.pop(context, (steps: value))
-              : null,
-          child: Text(l10n.queueBudgetSave),
-        ),
-      ],
     );
   }
 }

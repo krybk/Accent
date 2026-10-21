@@ -1,0 +1,349 @@
+{
+  "at": "2026-10-21T05:00:00Z",
+  "slots": 4,
+  "running": 1,
+  "free": 3,
+  "idle_reason": "build_wait",
+  "plans": [
+    {
+      "issue": 101,
+      "title": "Plan 101",
+      "status": "open",
+      "priority": 0,
+      "state": "working",
+      "detail": "detail working",
+      "sessions": 1,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 10
+    },
+    {
+      "issue": 102,
+      "title": "Plan 102",
+      "status": "open",
+      "priority": null,
+      "state": "short_of_slots",
+      "detail": "detail short_of_slots",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 11
+    },
+    {
+      "issue": 103,
+      "title": "Plan 103",
+      "status": "open",
+      "priority": 2,
+      "state": "build_wait",
+      "detail": "detail build_wait",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 12
+    },
+    {
+      "issue": 104,
+      "title": "Plan 104",
+      "status": "open",
+      "priority": 0,
+      "state": "draining",
+      "detail": "detail draining",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 13
+    },
+    {
+      "issue": 105,
+      "title": "Plan 105",
+      "status": "open",
+      "priority": 1,
+      "state": "planning",
+      "detail": "detail planning",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 14
+    },
+    {
+      "issue": 106,
+      "title": "Plan 106",
+      "status": "open",
+      "priority": 2,
+      "state": "planning_wait",
+      "detail": "detail planning_wait",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 15
+    },
+    {
+      "issue": 107,
+      "title": "Plan 107",
+      "status": "open",
+      "priority": 0,
+      "state": "queued",
+      "detail": "detail queued",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 16
+    },
+    {
+      "issue": 108,
+      "title": "Plan 108",
+      "status": "open",
+      "priority": 1,
+      "state": "cooldown",
+      "detail": "detail cooldown",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 17
+    },
+    {
+      "issue": 109,
+      "title": "Plan 109",
+      "status": "open",
+      "priority": 2,
+      "state": "waiting_merge",
+      "detail": "detail waiting_merge",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 18
+    },
+    {
+      "issue": 110,
+      "title": "Plan 110",
+      "status": "open",
+      "priority": 0,
+      "state": "waiting_owner",
+      "detail": "detail waiting_owner",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 19
+    },
+    {
+      "issue": 111,
+      "title": "Plan 111",
+      "status": "open",
+      "priority": 1,
+      "state": "blocked",
+      "detail": "detail blocked",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 20
+    },
+    {
+      "issue": 112,
+      "title": "Plan 112",
+      "status": "open",
+      "priority": 2,
+      "state": "budget",
+      "detail": "detail budget",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 21
+    },
+    {
+      "issue": 113,
+      "title": "Plan 113",
+      "status": "open",
+      "priority": 0,
+      "state": "held",
+      "detail": "detail held",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 22
+    },
+    {
+      "issue": 114,
+      "title": "Plan 114",
+      "status": "open",
+      "priority": 1,
+      "state": "frozen",
+      "detail": "detail frozen",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 23
+    },
+    {
+      "issue": 115,
+      "title": "Plan 115",
+      "status": "open",
+      "priority": 2,
+      "state": "idle",
+      "detail": "detail idle",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 24
+    },
+    {
+      "issue": 116,
+      "title": "Plan 116",
+      "status": "open",
+      "priority": 0,
+      "state": "mystery_state",
+      "detail": "detail mystery_state",
+      "sessions": 0,
+      "wants": 1,
+      "since": "2026-10-20T21:19:00Z",
+      "for_min": 25
+    }
+  ],
+  "waiting": [
+    {
+      "issue": "150",
+      "pid": 4242,
+      "repo": "owner/repo",
+      "kind": "build",
+      "since": 1792558674.108,
+      "item": "item-1",
+      "step": "step-1",
+      "waited_min": 25
+    },
+    {
+      "waited_min": 5
+    }
+  ],
+  "attention": [
+    {
+      "kind": "question",
+      "severity": "act",
+      "issue": 101,
+      "title": "Plan 101",
+      "detail": "question detail",
+      "action": "fix question",
+      "url": "https://example.org/issues/101",
+      "since": "2026-10-20T21:19:00Z",
+      "task": "t2"
+    },
+    {
+      "kind": "blocked",
+      "severity": "act",
+      "issue": 102,
+      "title": "Plan 102",
+      "detail": "blocked detail",
+      "action": "fix blocked",
+      "url": "https://example.org/issues/102",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "budget",
+      "severity": "info",
+      "issue": 103,
+      "title": "Plan 103",
+      "detail": "budget detail",
+      "action": "fix budget",
+      "url": "https://example.org/issues/103",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "held",
+      "severity": "info",
+      "issue": 104,
+      "title": "Plan 104",
+      "detail": "held detail",
+      "action": "fix held",
+      "url": "https://example.org/issues/104",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "build_wait",
+      "severity": "info",
+      "issue": 105,
+      "title": "Plan 105",
+      "detail": "build_wait detail",
+      "action": "fix build_wait",
+      "url": "https://example.org/issues/105",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "disk",
+      "severity": "info",
+      "issue": null,
+      "title": "",
+      "detail": "disk detail",
+      "action": "fix disk",
+      "url": null,
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "host_busy",
+      "severity": "info",
+      "issue": 107,
+      "title": "Plan 107",
+      "detail": "host_busy detail",
+      "action": "fix host_busy",
+      "url": "https://example.org/issues/107",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "service",
+      "severity": "info",
+      "issue": 108,
+      "title": "Plan 108",
+      "detail": "service detail",
+      "action": "fix service",
+      "url": "https://example.org/issues/108",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "provider",
+      "severity": "info",
+      "issue": 109,
+      "title": "Plan 109",
+      "detail": "provider detail",
+      "action": "fix provider",
+      "url": "https://example.org/issues/109",
+      "since": "2026-10-20T21:19:00Z"
+    },
+    {
+      "kind": "mystery_kind",
+      "severity": "mystery",
+      "issue": 110,
+      "title": "Plan 110",
+      "detail": "mystery_kind detail",
+      "action": "fix mystery_kind",
+      "url": "https://example.org/issues/110",
+      "since": "2026-10-20T21:19:00Z"
+    }
+  ],
+  "states": {
+    "101": "working",
+    "102": "short_of_slots"
+  },
+  "summary": {
+    "hours": 24,
+    "by_plan": {
+      "101": {
+        "working": 1.0,
+        "draining": 110.5
+      },
+      "bad": {
+        "working": 2.0
+      }
+    },
+    "idle_slot_hours": {
+      "build_wait": 2.5,
+      "scheduler": 0.5
+    },
+    "free_share": 0.25,
+    "longest": [
+      {
+        "issue": 101,
+        "state": "draining",
+        "detail": "round age",
+        "start": "2026-10-20T21:19:00Z",
+        "minutes": 110.0
+      }
+    ]
+  }
+}

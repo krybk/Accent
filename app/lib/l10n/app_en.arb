@@ -523,5 +523,200 @@
         "type": "String"
       }
     }
-  }
+  },
+  "navSituation": "Situation",
+  "situationNeedsYou": "Needs you",
+  "situationNothingNeeded": "Nothing needs you",
+  "situationInfoCount": "For information: {count}",
+  "@situationInfoCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "situationStaleBanner": "Could not refresh, showing earlier data",
+  "situationActionReply": "Reply",
+  "situationActionAddSteps": "Add steps",
+  "situationActionResume": "Resume",
+  "situationActionModels": "Models",
+  "situationActionOpen": "Open",
+  "situationDone": "Done",
+  "situationSlots": "{running} of {slots} slots running, {free} free",
+  "@situationSlots": {
+    "placeholders": {
+      "running": {
+        "type": "int"
+      },
+      "slots": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      }
+    }
+  },
+  "situationSlotsWithReason": "{running} of {slots} slots running, {free} free: {reason}",
+  "@situationSlotsWithReason": {
+    "placeholders": {
+      "running": {
+        "type": "int"
+      },
+      "slots": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "situationUpdated": "updated {time}",
+  "@situationUpdated": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "situationPlansTitle": "Plans in work",
+  "situationNoPlans": "No plans in work",
+  "situationPriority": "P{priority}",
+  "@situationPriority": {
+    "placeholders": {
+      "priority": {
+        "type": "int"
+      }
+    }
+  },
+  "situationSessions": "{count, plural, one{{count} session} other{{count} sessions}}",
+  "@situationSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "situationForMin": "for {minutes} min",
+  "@situationForMin": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "situationMenuPriority": "Priority",
+  "situationMenuHold": "Pause",
+  "situationMenuResume": "Resume",
+  "situationMenuBudget": "Step budget",
+  "situationMenuWrite": "Write to the plan",
+  "situationBuildQueue": "Build queue",
+  "situationWaited": "waiting {minutes} min",
+  "@situationWaited": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "situationNoBuildWait": "No one is waiting for a build slot",
+  "situationHistory": "History",
+  "situationHours24": "24 h",
+  "situationHours168": "7 days",
+  "situationFreeShare": "Free slots: {percent}%",
+  "@situationFreeShare": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "situationNoData": "No data yet",
+  "situationIdleSlotsTitle": "Idle slots by reason",
+  "situationSlotHours": "{hours} slot-h",
+  "@situationSlotHours": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "situationByPlanTitle": "Time by state",
+  "situationSegment": "{label} {minutes} min",
+  "@situationSegment": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "situationLongestTitle": "Longest intervals",
+  "situationLongest": "#{issue} {label} {minutes} min since {time} — {detail}",
+  "@situationLongest": {
+    "placeholders": {
+      "issue": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "situationLongestNoDetail": "#{issue} {label} {minutes} min since {time}",
+  "@situationLongestNoDetail": {
+    "placeholders": {
+      "issue": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "situationStateWorking": "Working",
+  "situationStateShortOfSlots": "Short of slots",
+  "situationStateBuildWait": "Waiting for a build slot",
+  "situationStateDraining": "Round finishing",
+  "situationStatePlanning": "Planning",
+  "situationStatePlanningWait": "Waiting to plan",
+  "situationStateQueued": "Queued",
+  "situationStateCooldown": "Cooling down",
+  "situationStateWaitingMerge": "Waiting for merge",
+  "situationStateWaitingOwner": "Waiting for you",
+  "situationStateBlocked": "Blocked",
+  "situationStateBudget": "Step budget used",
+  "situationStateHeld": "Paused",
+  "situationStateFrozen": "Frozen",
+  "situationStateIdle": "Idle",
+  "situationStateScheduler": "Scheduler has not topped up",
+  "situationStateNoWork": "No work",
+  "situationKindQuestion": "Question",
+  "situationKindBlocked": "Plan blocked",
+  "situationKindBudget": "Step budget",
+  "situationKindHeld": "Paused plan",
+  "situationKindBuildWait": "Build slot wait",
+  "situationKindDisk": "Disk",
+  "situationKindHostBusy": "Build host busy",
+  "situationKindService": "Service down",
+  "situationKindProvider": "Provider limit"
 }

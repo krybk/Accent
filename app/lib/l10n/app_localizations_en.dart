@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -628,4 +627,247 @@ class AppLocalizationsEn extends AppLocalizations {
   String statsWindow(String days) {
     return 'Last $days days';
   }
+
+  @override
+  String get navSituation => 'Situation';
+
+  @override
+  String get situationNeedsYou => 'Needs you';
+
+  @override
+  String get situationNothingNeeded => 'Nothing needs you';
+
+  @override
+  String situationInfoCount(int count) {
+    return 'For information: $count';
+  }
+
+  @override
+  String get situationStaleBanner => 'Could not refresh, showing earlier data';
+
+  @override
+  String get situationActionReply => 'Reply';
+
+  @override
+  String get situationActionAddSteps => 'Add steps';
+
+  @override
+  String get situationActionResume => 'Resume';
+
+  @override
+  String get situationActionModels => 'Models';
+
+  @override
+  String get situationActionOpen => 'Open';
+
+  @override
+  String get situationDone => 'Done';
+
+  @override
+  String situationSlots(int running, int slots, int free) {
+    return '$running of $slots slots running, $free free';
+  }
+
+  @override
+  String situationSlotsWithReason(
+    int running,
+    int slots,
+    int free,
+    String reason,
+  ) {
+    return '$running of $slots slots running, $free free: $reason';
+  }
+
+  @override
+  String situationUpdated(String time) {
+    return 'updated $time';
+  }
+
+  @override
+  String get situationPlansTitle => 'Plans in work';
+
+  @override
+  String get situationNoPlans => 'No plans in work';
+
+  @override
+  String situationPriority(int priority) {
+    return 'P$priority';
+  }
+
+  @override
+  String situationSessions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '$count session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String situationForMin(int minutes) {
+    return 'for $minutes min';
+  }
+
+  @override
+  String get situationMenuPriority => 'Priority';
+
+  @override
+  String get situationMenuHold => 'Pause';
+
+  @override
+  String get situationMenuResume => 'Resume';
+
+  @override
+  String get situationMenuBudget => 'Step budget';
+
+  @override
+  String get situationMenuWrite => 'Write to the plan';
+
+  @override
+  String get situationBuildQueue => 'Build queue';
+
+  @override
+  String situationWaited(int minutes) {
+    return 'waiting $minutes min';
+  }
+
+  @override
+  String get situationNoBuildWait => 'No one is waiting for a build slot';
+
+  @override
+  String get situationHistory => 'History';
+
+  @override
+  String get situationHours24 => '24 h';
+
+  @override
+  String get situationHours168 => '7 days';
+
+  @override
+  String situationFreeShare(int percent) {
+    return 'Free slots: $percent%';
+  }
+
+  @override
+  String get situationNoData => 'No data yet';
+
+  @override
+  String get situationIdleSlotsTitle => 'Idle slots by reason';
+
+  @override
+  String situationSlotHours(String hours) {
+    return '$hours slot-h';
+  }
+
+  @override
+  String get situationByPlanTitle => 'Time by state';
+
+  @override
+  String situationSegment(String label, int minutes) {
+    return '$label $minutes min';
+  }
+
+  @override
+  String get situationLongestTitle => 'Longest intervals';
+
+  @override
+  String situationLongest(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+    String detail,
+  ) {
+    return '#$issue $label $minutes min since $time — $detail';
+  }
+
+  @override
+  String situationLongestNoDetail(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+  ) {
+    return '#$issue $label $minutes min since $time';
+  }
+
+  @override
+  String get situationStateWorking => 'Working';
+
+  @override
+  String get situationStateShortOfSlots => 'Short of slots';
+
+  @override
+  String get situationStateBuildWait => 'Waiting for a build slot';
+
+  @override
+  String get situationStateDraining => 'Round finishing';
+
+  @override
+  String get situationStatePlanning => 'Planning';
+
+  @override
+  String get situationStatePlanningWait => 'Waiting to plan';
+
+  @override
+  String get situationStateQueued => 'Queued';
+
+  @override
+  String get situationStateCooldown => 'Cooling down';
+
+  @override
+  String get situationStateWaitingMerge => 'Waiting for merge';
+
+  @override
+  String get situationStateWaitingOwner => 'Waiting for you';
+
+  @override
+  String get situationStateBlocked => 'Blocked';
+
+  @override
+  String get situationStateBudget => 'Step budget used';
+
+  @override
+  String get situationStateHeld => 'Paused';
+
+  @override
+  String get situationStateFrozen => 'Frozen';
+
+  @override
+  String get situationStateIdle => 'Idle';
+
+  @override
+  String get situationStateScheduler => 'Scheduler has not topped up';
+
+  @override
+  String get situationStateNoWork => 'No work';
+
+  @override
+  String get situationKindQuestion => 'Question';
+
+  @override
+  String get situationKindBlocked => 'Plan blocked';
+
+  @override
+  String get situationKindBudget => 'Step budget';
+
+  @override
+  String get situationKindHeld => 'Paused plan';
+
+  @override
+  String get situationKindBuildWait => 'Build slot wait';
+
+  @override
+  String get situationKindDisk => 'Disk';
+
+  @override
+  String get situationKindHostBusy => 'Build host busy';
+
+  @override
+  String get situationKindService => 'Service down';
+
+  @override
+  String get situationKindProvider => 'Provider limit';
 }
