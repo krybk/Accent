@@ -625,4 +625,250 @@ class AppLocalizationsRu extends AppLocalizations {
   String statsWindow(String days) {
     return 'За последние $days дн.';
   }
+
+  @override
+  String get navSituation => 'Ситуация';
+
+  @override
+  String get situationNeedsYou => 'Нужно от вас';
+
+  @override
+  String get situationNothingNeeded => 'От вас ничего не требуется';
+
+  @override
+  String situationInfoCount(int count) {
+    return 'Для сведения: $count';
+  }
+
+  @override
+  String get situationStaleBanner =>
+      'Не удалось обновить, показаны прежние данные';
+
+  @override
+  String get situationActionReply => 'Ответить';
+
+  @override
+  String get situationActionAddSteps => 'Добавить шагов';
+
+  @override
+  String get situationActionResume => 'Возобновить';
+
+  @override
+  String get situationActionModels => 'Модели';
+
+  @override
+  String get situationActionOpen => 'Открыть';
+
+  @override
+  String get situationDone => 'Готово';
+
+  @override
+  String situationSlots(int running, int slots, int free) {
+    return 'Сессий: $running из $slots, свободно $free';
+  }
+
+  @override
+  String situationSlotsWithReason(
+    int running,
+    int slots,
+    int free,
+    String reason,
+  ) {
+    return 'Сессий: $running из $slots, свободно $free: $reason';
+  }
+
+  @override
+  String situationUpdated(String time) {
+    return 'обновлено $time';
+  }
+
+  @override
+  String get situationPlansTitle => 'Планы в работе';
+
+  @override
+  String get situationNoPlans => 'Нет планов в работе';
+
+  @override
+  String situationPriority(int priority) {
+    return 'P$priority';
+  }
+
+  @override
+  String situationSessions(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count сессии',
+      many: '$count сессий',
+      few: '$count сессии',
+      one: '$count сессия',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String situationForMin(int minutes) {
+    return 'уже $minutes мин';
+  }
+
+  @override
+  String get situationMenuPriority => 'Приоритет';
+
+  @override
+  String get situationMenuHold => 'Поставить на паузу';
+
+  @override
+  String get situationMenuResume => 'Возобновить';
+
+  @override
+  String get situationMenuBudget => 'Бюджет шагов';
+
+  @override
+  String get situationMenuWrite => 'Написать плану';
+
+  @override
+  String get situationBuildQueue => 'Очередь на сборку';
+
+  @override
+  String situationWaited(int minutes) {
+    return 'ждёт $minutes мин';
+  }
+
+  @override
+  String get situationNoBuildWait => 'Очереди на сборку нет';
+
+  @override
+  String get situationHistory => 'История';
+
+  @override
+  String get situationHours24 => '24 ч';
+
+  @override
+  String get situationHours168 => '7 дней';
+
+  @override
+  String situationFreeShare(int percent) {
+    return 'Свободные слоты: $percent%';
+  }
+
+  @override
+  String get situationNoData => 'Данных пока нет';
+
+  @override
+  String get situationIdleSlotsTitle => 'Простой слотов по причинам';
+
+  @override
+  String situationSlotHours(String hours) {
+    return '$hours слот-ч';
+  }
+
+  @override
+  String get situationByPlanTitle => 'Время по состояниям';
+
+  @override
+  String situationSegment(String label, int minutes) {
+    return '$label $minutes мин';
+  }
+
+  @override
+  String get situationLongestTitle => 'Самые долгие интервалы';
+
+  @override
+  String situationLongest(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+    String detail,
+  ) {
+    return '#$issue $label $minutes мин с $time — $detail';
+  }
+
+  @override
+  String situationLongestNoDetail(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+  ) {
+    return '#$issue $label $minutes мин с $time';
+  }
+
+  @override
+  String get situationStateWorking => 'Работает';
+
+  @override
+  String get situationStateShortOfSlots => 'Не хватает слотов';
+
+  @override
+  String get situationStateBuildWait => 'Ждёт сборочный слот';
+
+  @override
+  String get situationStateDraining => 'Раунд дозавершается';
+
+  @override
+  String get situationStatePlanning => 'Планируется';
+
+  @override
+  String get situationStatePlanningWait => 'Ждёт слот для планирования';
+
+  @override
+  String get situationStateQueued => 'В очереди';
+
+  @override
+  String get situationStateCooldown => 'Пауза после лимита';
+
+  @override
+  String get situationStateWaitingMerge => 'Ждёт слияния';
+
+  @override
+  String get situationStateWaitingOwner => 'Ждёт вашего ответа';
+
+  @override
+  String get situationStateBlocked => 'Заблокирован';
+
+  @override
+  String get situationStateBudget => 'Бюджет шагов исчерпан';
+
+  @override
+  String get situationStateHeld => 'На паузе';
+
+  @override
+  String get situationStateFrozen => 'Заморожен';
+
+  @override
+  String get situationStateIdle => 'Простаивает';
+
+  @override
+  String get situationStateScheduler => 'Планировщик не догрузил';
+
+  @override
+  String get situationStateNoWork => 'Нет работы';
+
+  @override
+  String get situationKindQuestion => 'Вопрос';
+
+  @override
+  String get situationKindBlocked => 'План заблокирован';
+
+  @override
+  String get situationKindBudget => 'Бюджет шагов';
+
+  @override
+  String get situationKindHeld => 'План на паузе';
+
+  @override
+  String get situationKindBuildWait => 'Ожидание сборки';
+
+  @override
+  String get situationKindDisk => 'Диск';
+
+  @override
+  String get situationKindHostBusy => 'Сборочный хост занят';
+
+  @override
+  String get situationKindService => 'Сервис не работает';
+
+  @override
+  String get situationKindProvider => 'Лимит провайдера';
 }

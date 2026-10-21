@@ -1147,6 +1147,412 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last {days} days'**
   String statsWindow(String days);
+
+  /// No description provided for @navSituation.
+  ///
+  /// In en, this message translates to:
+  /// **'Situation'**
+  String get navSituation;
+
+  /// No description provided for @situationNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs you'**
+  String get situationNeedsYou;
+
+  /// No description provided for @situationNothingNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing needs you'**
+  String get situationNothingNeeded;
+
+  /// No description provided for @situationInfoCount.
+  ///
+  /// In en, this message translates to:
+  /// **'For information: {count}'**
+  String situationInfoCount(int count);
+
+  /// No description provided for @situationStaleBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh, showing earlier data'**
+  String get situationStaleBanner;
+
+  /// No description provided for @situationActionReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get situationActionReply;
+
+  /// No description provided for @situationActionAddSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Add steps'**
+  String get situationActionAddSteps;
+
+  /// No description provided for @situationActionResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get situationActionResume;
+
+  /// No description provided for @situationActionModels.
+  ///
+  /// In en, this message translates to:
+  /// **'Models'**
+  String get situationActionModels;
+
+  /// No description provided for @situationActionOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get situationActionOpen;
+
+  /// No description provided for @situationDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get situationDone;
+
+  /// No description provided for @situationSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'{running} of {slots} slots running, {free} free'**
+  String situationSlots(int running, int slots, int free);
+
+  /// No description provided for @situationSlotsWithReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{running} of {slots} slots running, {free} free: {reason}'**
+  String situationSlotsWithReason(
+    int running,
+    int slots,
+    int free,
+    String reason,
+  );
+
+  /// No description provided for @situationUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'updated {time}'**
+  String situationUpdated(String time);
+
+  /// No description provided for @situationPlansTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plans in work'**
+  String get situationPlansTitle;
+
+  /// No description provided for @situationNoPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'No plans in work'**
+  String get situationNoPlans;
+
+  /// No description provided for @situationPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'P{priority}'**
+  String situationPriority(int priority);
+
+  /// No description provided for @situationSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} session} other{{count} sessions}}'**
+  String situationSessions(int count);
+
+  /// No description provided for @situationForMin.
+  ///
+  /// In en, this message translates to:
+  /// **'for {minutes} min'**
+  String situationForMin(int minutes);
+
+  /// No description provided for @situationMenuPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority'**
+  String get situationMenuPriority;
+
+  /// No description provided for @situationMenuHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get situationMenuHold;
+
+  /// No description provided for @situationMenuResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get situationMenuResume;
+
+  /// No description provided for @situationMenuBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Step budget'**
+  String get situationMenuBudget;
+
+  /// No description provided for @situationMenuWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Write to the plan'**
+  String get situationMenuWrite;
+
+  /// No description provided for @situationBuildQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Build queue'**
+  String get situationBuildQueue;
+
+  /// No description provided for @situationWaited.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting {minutes} min'**
+  String situationWaited(int minutes);
+
+  /// No description provided for @situationNoBuildWait.
+  ///
+  /// In en, this message translates to:
+  /// **'No one is waiting for a build slot'**
+  String get situationNoBuildWait;
+
+  /// No description provided for @situationHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get situationHistory;
+
+  /// No description provided for @situationHours24.
+  ///
+  /// In en, this message translates to:
+  /// **'24 h'**
+  String get situationHours24;
+
+  /// No description provided for @situationHours168.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get situationHours168;
+
+  /// No description provided for @situationFreeShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Free slots: {percent}%'**
+  String situationFreeShare(int percent);
+
+  /// No description provided for @situationNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data yet'**
+  String get situationNoData;
+
+  /// No description provided for @situationIdleSlotsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle slots by reason'**
+  String get situationIdleSlotsTitle;
+
+  /// No description provided for @situationSlotHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} slot-h'**
+  String situationSlotHours(String hours);
+
+  /// No description provided for @situationByPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time by state'**
+  String get situationByPlanTitle;
+
+  /// No description provided for @situationSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} {minutes} min'**
+  String situationSegment(String label, int minutes);
+
+  /// No description provided for @situationLongestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest intervals'**
+  String get situationLongestTitle;
+
+  /// No description provided for @situationLongest.
+  ///
+  /// In en, this message translates to:
+  /// **'#{issue} {label} {minutes} min since {time} — {detail}'**
+  String situationLongest(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+    String detail,
+  );
+
+  /// No description provided for @situationLongestNoDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'#{issue} {label} {minutes} min since {time}'**
+  String situationLongestNoDetail(
+    int issue,
+    String label,
+    int minutes,
+    String time,
+  );
+
+  /// No description provided for @situationStateWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get situationStateWorking;
+
+  /// No description provided for @situationStateShortOfSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'Short of slots'**
+  String get situationStateShortOfSlots;
+
+  /// No description provided for @situationStateBuildWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for a build slot'**
+  String get situationStateBuildWait;
+
+  /// No description provided for @situationStateDraining.
+  ///
+  /// In en, this message translates to:
+  /// **'Round finishing'**
+  String get situationStateDraining;
+
+  /// No description provided for @situationStatePlanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Planning'**
+  String get situationStatePlanning;
+
+  /// No description provided for @situationStatePlanningWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to plan'**
+  String get situationStatePlanningWait;
+
+  /// No description provided for @situationStateQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get situationStateQueued;
+
+  /// No description provided for @situationStateCooldown.
+  ///
+  /// In en, this message translates to:
+  /// **'Cooling down'**
+  String get situationStateCooldown;
+
+  /// No description provided for @situationStateWaitingMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for merge'**
+  String get situationStateWaitingMerge;
+
+  /// No description provided for @situationStateWaitingOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for you'**
+  String get situationStateWaitingOwner;
+
+  /// No description provided for @situationStateBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get situationStateBlocked;
+
+  /// No description provided for @situationStateBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Step budget used'**
+  String get situationStateBudget;
+
+  /// No description provided for @situationStateHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get situationStateHeld;
+
+  /// No description provided for @situationStateFrozen.
+  ///
+  /// In en, this message translates to:
+  /// **'Frozen'**
+  String get situationStateFrozen;
+
+  /// No description provided for @situationStateIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get situationStateIdle;
+
+  /// No description provided for @situationStateScheduler.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduler has not topped up'**
+  String get situationStateScheduler;
+
+  /// No description provided for @situationStateNoWork.
+  ///
+  /// In en, this message translates to:
+  /// **'No work'**
+  String get situationStateNoWork;
+
+  /// No description provided for @situationKindQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question'**
+  String get situationKindQuestion;
+
+  /// No description provided for @situationKindBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan blocked'**
+  String get situationKindBlocked;
+
+  /// No description provided for @situationKindBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Step budget'**
+  String get situationKindBudget;
+
+  /// No description provided for @situationKindHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused plan'**
+  String get situationKindHeld;
+
+  /// No description provided for @situationKindBuildWait.
+  ///
+  /// In en, this message translates to:
+  /// **'Build slot wait'**
+  String get situationKindBuildWait;
+
+  /// No description provided for @situationKindDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk'**
+  String get situationKindDisk;
+
+  /// No description provided for @situationKindHostBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Build host busy'**
+  String get situationKindHostBusy;
+
+  /// No description provided for @situationKindService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service down'**
+  String get situationKindService;
+
+  /// No description provided for @situationKindProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider limit'**
+  String get situationKindProvider;
 }
 
 class _AppLocalizationsDelegate
