@@ -191,6 +191,16 @@ void main() {
           'services': [],
           'paused': [],
         },
+        '/v1/plane/stalls' => {
+          'slots': 2,
+          'running': 1,
+          'free': 1,
+          'plans': [],
+          'waiting': [],
+          'attention': [],
+          'states': {},
+          'summary': {'hours': 24},
+        },
         '/v1/plane/actions' => {'actions': []},
         '/v1/plane/usage' => {
           'generated_at': '2026-10-13T09:00:00Z',
@@ -217,6 +227,8 @@ void main() {
     );
 
     await tester.tap(find.text('Deployed'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Plane'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ServerHomeScreen), findsOneWidget);
@@ -256,6 +268,16 @@ void main() {
           'providers': [],
           'services': [],
           'paused': [],
+        },
+        '/v1/plane/stalls' => {
+          'slots': 2,
+          'running': 1,
+          'free': 1,
+          'plans': [],
+          'waiting': [],
+          'attention': [],
+          'states': {},
+          'summary': {'hours': 24},
         },
         '/v1/plane/actions' => {'actions': []},
         '/v1/plane/usage' => {
@@ -321,6 +343,16 @@ void main() {
             'services': [],
             'paused': [],
           },
+          '/v1/plane/stalls' => {
+            'slots': 2,
+            'running': 1,
+            'free': 1,
+            'plans': [],
+            'waiting': [],
+            'attention': [],
+            'states': {},
+            'summary': {'hours': 24},
+          },
           '/v1/plane/actions' => {'actions': []},
           '/v1/plane/usage' => {
             'generated_at': '2026-10-13T09:00:00Z',
@@ -354,7 +386,7 @@ void main() {
 
       await tester.tap(find.text('Deployed'));
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationDestination), findsNWidgets(6));
+      expect(find.byType(NavigationDestination), findsNWidgets(7));
 
       await tester.tap(find.text('Queue'));
       await tester.pumpAndSettle();
@@ -380,6 +412,78 @@ void main() {
       expect(find.byType(StatsScreen), findsOneWidget);
     },
   );
+
+  for (final (name, attention, expected) in [
+    (
+      'the situation badge counts act items',
+      [
+        {'kind': 'question', 'severity': 'act', 'issue': 101},
+        {'kind': 'question', 'severity': 'act', 'issue': 102},
+        {'kind': 'question', 'severity': 'info', 'issue': 103},
+      ],
+      2,
+    ),
+    ('the situation badge is empty without act items', [], 0),
+  ]) {
+    testWidgets(name, (tester) async {
+      await profiles.save(
+        const ServerProfile(
+          id: 'srv_1',
+          name: 'Deployed',
+          host: '192.0.2.10',
+          username: 'root',
+          bootstrapped: true,
+        ),
+      );
+      Future<http.Response> handler(http.Request r) async {
+        final body = switch (r.url.path) {
+          '/v1/plane/stalls' => {
+            'slots': 2,
+            'running': 1,
+            'free': 1,
+            'plans': [],
+            'waiting': [],
+            'attention': attention,
+            'states': {},
+            'summary': {'hours': 24},
+          },
+          _ => null,
+        };
+        if (body == null) return http.Response('{}', 404);
+        return http.Response(
+          jsonEncode(body),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      await pumpApp(
+        tester,
+        gatewayClients: (profile) async => GatewayClient(
+          baseUri: profile.gatewayUri,
+          token: 't',
+          httpClient: MockClient(handler),
+        ),
+      );
+
+      await tester.tap(find.text('Deployed'));
+      await tester.pumpAndSettle();
+
+      final badge = find.byKey(const Key('situation-act-badge'));
+      expect(badge, findsOneWidget);
+      if (expected > 0) {
+        expect(
+          find.descendant(of: badge, matching: find.text('$expected')),
+          findsOneWidget,
+        );
+      } else {
+        expect(
+          find.descendant(of: badge, matching: find.byType(Text)),
+          findsNothing,
+        );
+      }
+    });
+  }
 
   testWidgets('a row that is not bootstrapped does not open a home', (
     tester,
