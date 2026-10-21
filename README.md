@@ -62,6 +62,9 @@ owner presses Send in that dialog. The usage screen also switches each model
 tier off and on, and work for a tier that is off runs on its stand-in.
 The queue screen lists the open plans in the order they will be taken, and
 moves a plan up, down, to the top or to the end, or holds and resumes it.
+The Situation screen, the first on a server, shows what needs the owner's
+action, why agents are idle, the plans' states, the build-slot queue and the
+last 24 hours or 7 days, and acts on a plan from there.
 
 ## Releases
 
@@ -108,7 +111,7 @@ design; the debug build CI runs is unaffected.
 ## Installing and adding a server
 
 Download from the release page `accent-0.3.0-arm64-v8a.apk`, which fits
-practically every current phone, or `accent-0.2.1-universal.apk` if you are
+practically every current phone, or `accent-0.3.0-universal.apk` if you are
 unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
 emulators.
 
@@ -116,7 +119,7 @@ Verify the download before installing it:
 
 ```
 sha256sum -c SHA256SUMS.txt --ignore-missing
-apksigner verify --print-certs accent-0.2.1-arm64-v8a.apk
+apksigner verify --print-certs accent-0.3.0-arm64-v8a.apk
 ```
 
 `apksigner` must print `certificate SHA-256 digest:` followed by the value
