@@ -38,8 +38,12 @@ class _Env {
   }
 }
 
-Future<_Env> _pump(WidgetTester tester, Map<String, dynamic> payload) async {
-  tester.view.physicalSize = const Size(1080, 6000);
+Future<_Env> _pump(
+  WidgetTester tester,
+  Map<String, dynamic> payload, {
+  Size size = const Size(1080, 6000),
+}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   final env = _Env(payload);
@@ -151,6 +155,34 @@ void main() {
       ),
       findsOneWidget,
     );
+    env.controller.dispose();
+  });
+
+  testWidgets('long state label keeps the title readable', (tester) async {
+    final env = await _pump(tester, {
+      'plans': [
+        {
+          'issue': 372,
+          'title': 'Spreadsheet export for the weekly report',
+          'state': 'repo_busy',
+          'detail': 'round leased',
+          'sessions': 0,
+          'for_min': 12,
+        },
+      ],
+      'states': {
+        'repo_busy':
+            "ready work waits for its repository, leased by another plan's round",
+      },
+    }, size: const Size(360, 6000));
+    expect(tester.takeException(), isNull);
+    final title = find.text('#372 Spreadsheet export for the weekly report');
+    expect(title, findsOneWidget);
+    expect(tester.getSize(title).width, greaterThanOrEqualTo(200));
+    expect(tester.getSize(title).height, lessThanOrEqualTo(96));
+    final chip = find.byKey(const Key('situation-state-372'));
+    expect(chip, findsOneWidget);
+    expect(tester.getSize(chip).width, lessThanOrEqualTo(360));
     env.controller.dispose();
   });
 
