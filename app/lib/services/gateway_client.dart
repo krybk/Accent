@@ -146,6 +146,17 @@ class GatewayClient {
     await _send('GET', '/v1/plane/stats', const Duration(seconds: 30)),
   );
 
+  /// `GET /v1/plane/stalls[?hours=N]`: plan stalls, waits and attention items.
+  Future<PlaneStalls> planeStalls({int hours = 24}) async =>
+      PlaneStalls.fromJson(
+        await _send(
+          'GET',
+          '/v1/plane/stalls',
+          const Duration(seconds: 20),
+          query: {'hours': '$hours'},
+        ),
+      );
+
   /// Streams the answer to a chat message as server-sent events. Ends after
   /// the first `done` or `error` event.
   Stream<PlaneChatEvent> chat(PlaneChatRequest r) async* {
@@ -285,10 +296,14 @@ class GatewayClient {
     String path,
     Duration timeout, {
     String? body,
+    Map<String, String>? query,
   }) async {
     final http.Response response;
     try {
-      final request = http.Request(method, _baseUri.replace(path: path))
+      final uri = query == null
+          ? _baseUri.replace(path: path)
+          : _baseUri.replace(path: path, queryParameters: query);
+      final request = http.Request(method, uri)
         ..headers['authorization'] = 'Bearer $_token';
       if (body != null) {
         request.headers['content-type'] = 'application/json';

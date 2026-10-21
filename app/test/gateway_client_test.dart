@@ -88,6 +88,30 @@ void main() {
     expect(request.url.path, '/v1/plane/usage');
   });
 
+  test('planeStalls', () async {
+    final payload = {
+      'slots': 4,
+      'plans': [
+        {'issue': 101, 'title': 'First plan', 'state': 'running'},
+      ],
+      'attention': [
+        {'kind': 'review', 'severity': 'act', 'issue': 102},
+      ],
+    };
+    final request = await record((c) async {
+      final stalls = await c.planeStalls(hours: 168);
+      expect(stalls.slots, 4);
+      expect(stalls.plans.first.issue, 101);
+      expect(stalls.attention.first.severity, 'act');
+    }, payload);
+    expect(request.method, 'GET');
+    expect(request.url.path, '/v1/plane/stalls');
+    expect(request.url.queryParameters['hours'], '168');
+
+    final defaults = await record((c) => c.planeStalls(), payload);
+    expect(defaults.url.queryParameters['hours'], '24');
+  });
+
   test('planePlans', () async {
     final request = await record(
       (c) async {
