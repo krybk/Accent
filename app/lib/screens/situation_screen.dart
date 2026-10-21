@@ -457,15 +457,27 @@ class _SituationScreenState extends State<SituationScreen> {
               ? null
               : Text(l10n.situationPriority(p.priority!)),
           title: Text('#${p.issue} ${p.title}'),
-          subtitle: Text(
-            '${p.detail.isNotEmpty ? '${p.detail}\n' : ''}'
-            '${l10n.situationSessions(p.sessions)} · '
-            '${l10n.situationForMin(p.forMin)}',
-          ),
-          trailing: Chip(
-            key: Key('situation-state-${p.issue}'),
-            label: Text(stallStateLabel(l10n, p.state, s.states)),
-            backgroundColor: stallStateColor(p.state).shade100,
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Chip(
+                key: Key('situation-state-${p.issue}'),
+                label: Text(
+                  stallStateLabel(l10n, p.state, s.states),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                backgroundColor: stallStateColor(p.state).shade100,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+              Text(
+                '${p.detail.isNotEmpty ? '${p.detail}\n' : ''}'
+                '${l10n.situationSessions(p.sessions)} · '
+                '${l10n.situationForMin(p.forMin)}',
+              ),
+            ],
           ),
           onTap: () => _planMenu(p),
         ),
