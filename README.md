@@ -1,5 +1,20 @@
 # Accent
 
+Android-приложение для управления серверной ИИ-инфраструктурой и AIManager.
+Подключает сервер по SSH, развёртывает или подключает защищённый шлюз,
+показывает состояние работ, очередь планов и расход токенов, предоставляет чат.
+
+- `app/` — приложение Flutter; `gateway/` — серверный шлюз на Dart;
+  `protocol/` — общие типы сообщений.
+- Экран Situation показывает состояние сервера и вопросы, требующие внимания;
+  Queue позволяет менять порядок и приостанавливать планы.
+- Выпуск приложения: [Releases](https://github.com/krybk/Accent/releases).
+  Правила разработки: [docs/contributing.md](docs/contributing.md).
+
+Чат AIManager и отдельный модельный маршрут `/v1/chat` шлюза имеют разную
+конфигурацию: ключ провайдера для второго маршрута не обязателен для работы
+через управляющий контур. Ниже сохранены подробные инструкции на английском.
+
 An Android remote for server-side AI infrastructure.
 
 You add a server to the app — address, port, root credentials — and the app
@@ -47,7 +62,7 @@ Standing up: the gateway (config, auth, routing, upstream requests, a container
 stack that builds and answers a liveness probe), the shared `protocol` package
 (model catalogue, chat types), and on the app side server profiles with their
 key material kept in the Android Keystore, plus the SSH bootstrap that deploys
-the stack onto a server. 161 tests across the three packages.
+the stack onto a server. Состав и количество тестов проверяются текущим CI.
 
 CI runs four gates on every pull request and every push to `main`: a secret
 scan, the two Dart packages, the Flutter app including a debug APK build, and
@@ -197,18 +212,17 @@ Tapping the server opens:
 - **Queue** — open plans in the order they will be taken, moved up, down, to
   the top or to the end, held and resumed.
 
-## Models
+## Подключение моделей
 
-Sonnet and Opus are reachable through the gateway, which calls the Anthropic API
-directly with the server's own `ANTHROPIC_API_KEY`. The key is
-entered when the server is added, kept in the phone's secure storage, and
-written to that server's `.env` during bootstrap. Spend is accounted per call,
-which turned out to matter more than the choice of tier: the money goes into
-resending history, not into the length of answers. Measurements and
-conclusions are in [`docs/engineering-journal.md`](docs/engineering-journal.md).
+Чат через AIManager использует доступные провайдеры и маршруты управляющего
+контура сервера. Его конфигурация определяет используемую модель; README
+не фиксирует её навсегда как Sonnet или Opus.
 
-To verify that prompt caching actually works:
+Отдельный `/v1/chat` шлюза использует настроенный upstream, включая LiteLLM.
+Для него ключ провайдера передаётся при настройке сервера; без такой
+конфигурации стек может работать с AIManager, а локальный модельный маршрут
+возвращает `chat_not_configured`. Это поведение проверяется
+`scripts/stack-smoke.sh`; описание — в [docs/contributing.md](docs/contributing.md).
 
-```
-ANTHROPIC_API_KEY=... node scripts/cache-canary.js claude-sonnet-5-5
-```
+Исторические замеры кеширования и инженерные решения:
+[docs/engineering-journal.md](docs/engineering-journal.md).
