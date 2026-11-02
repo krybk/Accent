@@ -2,7 +2,9 @@
 
 Android-приложение для управления серверной ИИ-инфраструктурой и AIManager.
 Подключает сервер по SSH, развёртывает или подключает защищённый шлюз,
-показывает состояние работ, очередь планов и расход токенов, предоставляет чат.
+показывает состояние работ, очередь планов и расход токенов, предоставляет прямой чат с Codex и Claude с доступом к файлам и службам сервера.
+Показывает температуру CPU ноутбука, отдельные диски, выполняемые подзадачи
+с фактическими моделями и темп работы за последний час.
 
 - `app/` — приложение Flutter; `gateway/` — серверный шлюз на Dart;
   `protocol/` — общие типы сообщений.
@@ -53,8 +55,8 @@ password its database was initialised with.
 
 ## Status
 
-Version 0.3.1 is released: the signed APKs are on
-[v0.3.1](https://github.com/krybk/Accent/releases/tag/v0.3.1), and
+Version 0.4.0 is released: the signed APKs are on
+[v0.4.0](https://github.com/krybk/Accent/releases/tag/v0.4.0), and
 [Installing and adding a server](#installing-and-adding-a-server) says how to
 set one up.
 
@@ -83,7 +85,7 @@ last 24 hours or 7 days, and acts on a plan from there.
 
 ## Releases
 
-v0.1.0 was the first release and v0.3.1 is the latest. The release workflow triggers on `v*` only, and the
+v0.1.0 was the first release and v0.4.0 is the latest. The release workflow triggers on `v*` only, and the
 tag is still the trigger: a release is a decision, and the tag is where that
 decision is recorded.
 
@@ -125,8 +127,8 @@ design; the debug build CI runs is unaffected.
 
 ## Installing and adding a server
 
-Download from the release page `accent-0.3.1-arm64-v8a.apk`, which fits
-practically every current phone, or `accent-0.3.1-universal.apk` if you are
+Download from the release page `accent-0.4.0-arm64-v8a.apk`, which fits
+practically every current phone, or `accent-0.4.0-universal.apk` if you are
 unsure. The `armeabi-v7a` and `x86_64` builds exist for older phones and
 emulators.
 
@@ -134,7 +136,7 @@ Verify the download before installing it:
 
 ```
 sha256sum -c SHA256SUMS.txt --ignore-missing
-apksigner verify --print-certs accent-0.3.1-arm64-v8a.apk
+apksigner verify --print-certs accent-0.4.0-arm64-v8a.apk
 ```
 
 `apksigner` must print `certificate SHA-256 digest:` followed by the value
