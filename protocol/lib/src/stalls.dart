@@ -78,6 +78,14 @@ class PlaneStallPlan {
     this.wants = 0,
     this.since,
     this.forMin = 0,
+    this.held = false,
+    this.slice,
+    this.tasksDone = 0,
+    this.tasksTotal = 0,
+    this.stepsLastHour = 0,
+    this.lastActivity,
+    this.activeTasks = const [],
+    this.runningJobs = const [],
   });
 
   final int issue;
@@ -90,6 +98,14 @@ class PlaneStallPlan {
   final int wants;
   final String? since;
   final int forMin;
+  final bool held;
+  final int? slice;
+  final int tasksDone;
+  final int tasksTotal;
+  final int stepsLastHour;
+  final String? lastActivity;
+  final List<PlaneActiveTask> activeTasks;
+  final List<PlaneRunningJob> runningJobs;
 
   factory PlaneStallPlan.fromJson(Map<String, dynamic> json) => PlaneStallPlan(
     issue: _int(json['issue']) ?? 0,
@@ -102,6 +118,18 @@ class PlaneStallPlan {
     wants: _int(json['wants']) ?? 0,
     since: _str(json['since']),
     forMin: _int(json['for_min']) ?? 0,
+    held: json['held'] as bool? ?? json['state'] == 'held',
+    slice: _int(json['slice']),
+    tasksDone: _int(json['tasks_done']) ?? 0,
+    tasksTotal: _int(json['tasks_total']) ?? 0,
+    stepsLastHour: _int(json['steps_last_hour']) ?? 0,
+    lastActivity: _str(json['last_activity']),
+    runningJobs: [
+      for (final e in _list(json['running_jobs'])) PlaneRunningJob.fromJson(e),
+    ],
+    activeTasks: [
+      for (final e in _list(json['active_tasks'])) PlaneActiveTask.fromJson(e),
+    ],
   );
 }
 
@@ -237,5 +265,45 @@ class PlaneStallInterval {
         detail: _str(json['detail']),
         start: _str(json['start']),
         minutes: _dbl(json['minutes']) ?? 0.0,
+      );
+}
+
+class PlaneActiveTask {
+  const PlaneActiveTask({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.repo,
+    this.question,
+    this.subtasksDone = 0,
+    this.subtasksTotal = 0,
+  });
+  final String id;
+  final String title;
+  final String status;
+  final String? repo;
+  final String? question;
+  final int subtasksDone;
+  final int subtasksTotal;
+  factory PlaneActiveTask.fromJson(Map<String, dynamic> json) =>
+      PlaneActiveTask(
+        id: _str(json['id']) ?? '',
+        title: _str(json['title']) ?? '',
+        status: _str(json['status']) ?? '',
+        repo: _str(json['repo']),
+        question: _str(json['question']),
+        subtasksDone: _int(json['subtasks_done']) ?? 0,
+        subtasksTotal: _int(json['subtasks_total']) ?? 0,
+      );
+}
+
+class PlaneRunningJob {
+  const PlaneRunningJob({required this.item, required this.model});
+  final String item;
+  final String model;
+  factory PlaneRunningJob.fromJson(Map<String, dynamic> json) =>
+      PlaneRunningJob(
+        item: _str(json['item']) ?? _str(json['role']) ?? '',
+        model: _str(json['model']) ?? '',
       );
 }

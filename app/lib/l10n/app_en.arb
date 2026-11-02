@@ -183,7 +183,7 @@
   "chatNewConversation": "New conversation",
   "chatTierOpus": "Opus",
   "chatTierSonnet": "Sonnet",
-  "chatEmpty": "Ask what is being done now and why",
+  "chatEmpty": "Choose a model and send a request. It can inspect and change this server.",
   "chatDoneCaption": "{model} · {input} in · {output} out",
   "@chatDoneCaption": {
     "placeholders": {
@@ -718,5 +718,70 @@
   "situationKindDisk": "Disk",
   "situationKindHostBusy": "Build host busy",
   "situationKindService": "Service down",
-  "situationKindProvider": "Provider limit"
+  "situationKindProvider": "Provider limit",
+  "chatTierCodex": "Codex",
+  "chatWorking": "Working on your request…",
+  "chatDirectAccess": "Direct server session · file and service access",
+  "queueBlockedNote": "Pause is off. This plan still has a blocker; open Situation for details.",
+  "capacityTemperature": "CPU temperature: {value} °C",
+  "@capacityTemperature": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityVolume": "{device} · {mount}: {used}% used · {free} / {total} GB free",
+  "@capacityVolume": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "mount": {
+        "type": "String"
+      },
+      "used": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "situationProgress": "Slice {slice}: {done} / {total} tasks accepted",
+  "@situationProgress": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      },
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "situationPace": "{count} completed orchestration steps in the last hour",
+  "@situationPace": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "situationRunningJob": "Running: {item} · {model}",
+  "@situationRunningJob": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  }
 }

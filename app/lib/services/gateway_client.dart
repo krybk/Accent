@@ -32,7 +32,7 @@ class GatewayClient {
     required String token,
     required http.Client httpClient,
     this.chatHeaderTimeout = const Duration(seconds: 20),
-    this.chatTotalTimeout = const Duration(seconds: 660),
+    this.chatTotalTimeout = const Duration(seconds: 1860),
   }) : _baseUri = baseUri,
        _token = token,
        _http = httpClient;
@@ -247,6 +247,7 @@ class GatewayClient {
           if (!const {
             'session',
             'delta',
+            'activity',
             'done',
             'error',
           }.contains(eventName)) {

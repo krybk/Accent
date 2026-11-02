@@ -216,7 +216,7 @@ class _SituationScreenState extends State<SituationScreen> {
               );
             },
           ),
-          if (p.state != 'held')
+          if (!p.held)
             ListTile(
               key: const Key('situation-plan-hold'),
               title: Text(l10n.situationMenuHold),
@@ -472,6 +472,30 @@ class _SituationScreenState extends State<SituationScreen> {
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),
+              if (p.slice != null)
+                Text(
+                  l10n.situationProgress(p.slice!, p.tasksDone, p.tasksTotal),
+                ),
+              Text(l10n.situationPace(p.stepsLastHour)),
+              if (p.lastActivity != null)
+                Text(l10n.situationUpdated(_time(p.lastActivity))),
+              for (final job in p.runningJobs)
+                Text(l10n.situationRunningJob(job.item, job.model)),
+              for (final task in p.activeTasks)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${task.id}: ${task.title}'),
+                      if (task.repo != null) Text(task.repo!),
+                      Text(
+                        '${task.status} · ${task.subtasksDone}/${task.subtasksTotal}',
+                      ),
+                      if (task.question != null) Text(task.question!),
+                    ],
+                  ),
+                ),
               Text(
                 '${p.detail.isNotEmpty ? '${p.detail}\n' : ''}'
                 '${l10n.situationSessions(p.sessions)} · '

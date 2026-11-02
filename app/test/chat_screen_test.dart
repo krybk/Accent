@@ -107,7 +107,7 @@ void main() {
     await send(tester, 'hello');
     expect(fake.requests.single.message, 'hello');
     expect(fake.requests.single.sessionId, isNull);
-    expect(fake.requests.single.tier, 'opus');
+    expect(fake.requests.single.tier, 'codex');
 
     fake.current.add(const PlaneChatSession(sessionId: 's1', model: 'm1'));
     fake.current.add(const PlaneChatDelta(text: 'Hel'));
@@ -134,6 +134,24 @@ void main() {
     await send(tester, 'third');
     expect(fake.requests.last.sessionId, isNull);
   });
+
+  testWidgets(
+    'changing provider starts a new session and activity is visible',
+    (tester) async {
+      await open(tester);
+      await send(tester, 'check');
+      fake.current.add(const PlaneChatActivity('command_execution'));
+      await tester.pump();
+      expect(find.text('Working on your request…'), findsOneWidget);
+      await answer(tester);
+      await tester.tap(find.text('Sonnet'));
+      await tester.pump();
+      await send(tester, 'continue');
+      expect(fake.requests.last.sessionId, isNull);
+      expect(fake.requests.last.tier, 'sonnet');
+      await answer(tester);
+    },
+  );
 
   testWidgets('the Sonnet segment selects the tier', (tester) async {
     await open(tester);

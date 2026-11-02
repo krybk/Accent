@@ -29,6 +29,26 @@ final _full = {
         'mem_pct': 20,
         'disk_pct': 30,
         'disk_free_gb': 40,
+        'temperature_c': 67.5,
+        'sensors': [
+          {'name': 'coretemp: Package id 0', 'celsius': 67.5},
+        ],
+        'disks': [
+          {
+            'device': '/dev/sda2',
+            'mount': '/',
+            'total_gb': 120,
+            'free_gb': 40,
+            'used_pct': 65,
+          },
+          {
+            'device': '/dev/sdc1',
+            'mount': '/mnt/build-disk',
+            'total_gb': 737,
+            'free_gb': 577,
+            'used_pct': 16,
+          },
+        ],
       },
       'server': {'ok': false},
     },
@@ -101,6 +121,8 @@ void main() {
     expect(find.text('Cores: 8'), findsOneWidget);
     expect(find.byKey(const Key('capacity-host-laptop')), findsOneWidget);
     expect(find.text('laptop'), findsOneWidget);
+    expect(find.textContaining('CPU temperature: 67.5 °C'), findsOneWidget);
+    expect(find.textContaining('/dev/sdc1 · /mnt/build-disk'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('capacity-host-server')),

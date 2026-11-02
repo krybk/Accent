@@ -573,6 +573,7 @@ sealed class PlaneChatEvent {
       switch (event) {
         'session' => PlaneChatSession.fromJson(data),
         'delta' => PlaneChatDelta.fromJson(data),
+        'activity' => PlaneChatActivity(data['text'] as String? ?? ''),
         'done' => PlaneChatDone.fromJson(data),
         'error' => PlaneChatError.fromJson(data),
         _ => throw FormatException('unknown chat event: $event'),
@@ -849,3 +850,11 @@ class PlaneQueue {
 
 /// The path segment of `POST /v1/plane/queue/{id}/{verb}` is `verb.name`.
 enum PlaneQueueVerb { up, down, top, bottom, hold, resume }
+
+/// A tool or command is running; this is progress, not an assistant answer.
+final class PlaneChatActivity extends PlaneChatEvent {
+  const PlaneChatActivity(this.text);
+  final String text;
+  @override
+  Map<String, dynamic> toJson() => {'text': text};
+}

@@ -21,6 +21,7 @@ class StallsController extends ChangeNotifier {
   int _hours = 24;
   Timer? _timer;
   int _inFlight = 0;
+  int _generation = 0;
   bool _disposed = false;
 
   PlaneStalls? get stalls => _stalls;
@@ -42,6 +43,7 @@ class StallsController extends ChangeNotifier {
   /// Never throws: a failure is kept in [error] and the old [stalls] stay.
   Future<void> refresh() async {
     final asked = _hours;
+    final generation = ++_generation;
     _inFlight++;
     PlaneStalls? result;
     Object? failure;
@@ -54,7 +56,7 @@ class StallsController extends ChangeNotifier {
     } finally {
       _inFlight--;
     }
-    if (_disposed || asked != _hours) return;
+    if (_disposed || asked != _hours || generation != _generation) return;
     if (failed) {
       _error = failure;
     } else {

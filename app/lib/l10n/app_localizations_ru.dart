@@ -335,7 +335,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chatTierSonnet => 'Sonnet';
 
   @override
-  String get chatEmpty => 'Спросите, что сейчас делается и почему';
+  String get chatEmpty =>
+      'Выберите модель и напишите запрос. Она может проверять и изменять этот сервер.';
 
   @override
   String chatDoneCaption(String model, String input, String output) {
@@ -871,4 +872,49 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get situationKindProvider => 'Лимит провайдера';
+
+  @override
+  String get chatTierCodex => 'Codex';
+
+  @override
+  String get chatWorking => 'Выполняю запрос…';
+
+  @override
+  String get chatDirectAccess =>
+      'Прямая сессия на сервере · доступ к файлам и службам';
+
+  @override
+  String get queueBlockedNote =>
+      'Пауза снята. У плана остаётся блокер — подробности на экране «Ситуация».';
+
+  @override
+  String capacityTemperature(String value) {
+    return 'Температура CPU: $value °C';
+  }
+
+  @override
+  String capacityVolume(
+    String device,
+    String mount,
+    String used,
+    String free,
+    String total,
+  ) {
+    return '$device · $mount: занято $used% · свободно $free / $total ГБ';
+  }
+
+  @override
+  String situationProgress(int slice, int done, int total) {
+    return 'Срез $slice: принято $done / $total задач';
+  }
+
+  @override
+  String situationPace(int count) {
+    return 'За последний час завершено шагов управления: $count';
+  }
+
+  @override
+  String situationRunningJob(String item, String model) {
+    return 'Выполняется: $item · $model';
+  }
 }

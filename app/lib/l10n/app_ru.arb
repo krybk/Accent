@@ -146,7 +146,7 @@
   "chatNewConversation": "Новый разговор",
   "chatTierOpus": "Opus",
   "chatTierSonnet": "Sonnet",
-  "chatEmpty": "Спросите, что сейчас делается и почему",
+  "chatEmpty": "Выберите модель и напишите запрос. Она может проверять и изменять этот сервер.",
   "chatDoneCaption": "{model} · {input} вход · {output} выход",
   "@chatDoneCaption": {
     "placeholders": {
@@ -551,5 +551,70 @@
   "situationKindDisk": "Диск",
   "situationKindHostBusy": "Сборочный хост занят",
   "situationKindService": "Сервис не работает",
-  "situationKindProvider": "Лимит провайдера"
+  "situationKindProvider": "Лимит провайдера",
+  "chatTierCodex": "Codex",
+  "chatWorking": "Выполняю запрос…",
+  "chatDirectAccess": "Прямая сессия на сервере · доступ к файлам и службам",
+  "queueBlockedNote": "Пауза снята. У плана остаётся блокер — подробности на экране «Ситуация».",
+  "capacityTemperature": "Температура CPU: {value} °C",
+  "@capacityTemperature": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "capacityVolume": "{device} · {mount}: занято {used}% · свободно {free} / {total} ГБ",
+  "@capacityVolume": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "mount": {
+        "type": "String"
+      },
+      "used": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "situationProgress": "Срез {slice}: принято {done} / {total} задач",
+  "@situationProgress": {
+    "placeholders": {
+      "slice": {
+        "type": "int"
+      },
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "situationPace": "За последний час завершено шагов управления: {count}",
+  "@situationPace": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "situationRunningJob": "Выполняется: {item} · {model}",
+  "@situationRunningJob": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      },
+      "model": {
+        "type": "String"
+      }
+    }
+  }
 }

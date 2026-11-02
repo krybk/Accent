@@ -334,7 +334,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get chatTierSonnet => 'Sonnet';
 
   @override
-  String get chatEmpty => 'Ask what is being done now and why';
+  String get chatEmpty =>
+      'Choose a model and send a request. It can inspect and change this server.';
 
   @override
   String chatDoneCaption(String model, String input, String output) {
@@ -870,4 +871,49 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get situationKindProvider => 'Provider limit';
+
+  @override
+  String get chatTierCodex => 'Codex';
+
+  @override
+  String get chatWorking => 'Working on your request…';
+
+  @override
+  String get chatDirectAccess =>
+      'Direct server session · file and service access';
+
+  @override
+  String get queueBlockedNote =>
+      'Pause is off. This plan still has a blocker; open Situation for details.';
+
+  @override
+  String capacityTemperature(String value) {
+    return 'CPU temperature: $value °C';
+  }
+
+  @override
+  String capacityVolume(
+    String device,
+    String mount,
+    String used,
+    String free,
+    String total,
+  ) {
+    return '$device · $mount: $used% used · $free / $total GB free';
+  }
+
+  @override
+  String situationProgress(int slice, int done, int total) {
+    return 'Slice $slice: $done / $total tasks accepted';
+  }
+
+  @override
+  String situationPace(int count) {
+    return '$count completed orchestration steps in the last hour';
+  }
+
+  @override
+  String situationRunningJob(String item, String model) {
+    return 'Running: $item · $model';
+  }
 }

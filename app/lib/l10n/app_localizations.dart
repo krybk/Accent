@@ -689,7 +689,7 @@ abstract class AppLocalizations {
   /// No description provided for @chatEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Ask what is being done now and why'**
+  /// **'Choose a model and send a request. It can inspect and change this server.'**
   String get chatEmpty;
 
   /// No description provided for @chatDoneCaption.
@@ -1553,6 +1553,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Provider limit'**
   String get situationKindProvider;
+
+  /// No description provided for @chatTierCodex.
+  ///
+  /// In en, this message translates to:
+  /// **'Codex'**
+  String get chatTierCodex;
+
+  /// No description provided for @chatWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working on your request…'**
+  String get chatWorking;
+
+  /// No description provided for @chatDirectAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct server session · file and service access'**
+  String get chatDirectAccess;
+
+  /// No description provided for @queueBlockedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause is off. This plan still has a blocker; open Situation for details.'**
+  String get queueBlockedNote;
+
+  /// No description provided for @capacityTemperature.
+  ///
+  /// In en, this message translates to:
+  /// **'CPU temperature: {value} °C'**
+  String capacityTemperature(String value);
+
+  /// No description provided for @capacityVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'{device} · {mount}: {used}% used · {free} / {total} GB free'**
+  String capacityVolume(
+    String device,
+    String mount,
+    String used,
+    String free,
+    String total,
+  );
+
+  /// No description provided for @situationProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Slice {slice}: {done} / {total} tasks accepted'**
+  String situationProgress(int slice, int done, int total);
+
+  /// No description provided for @situationPace.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} completed orchestration steps in the last hour'**
+  String situationPace(int count);
+
+  /// No description provided for @situationRunningJob.
+  ///
+  /// In en, this message translates to:
+  /// **'Running: {item} · {model}'**
+  String situationRunningJob(String item, String model);
 }
 
 class _AppLocalizationsDelegate

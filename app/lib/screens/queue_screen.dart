@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:accent_protocol/protocol.dart';
 import 'package:flutter/material.dart';
 
@@ -21,18 +23,31 @@ class QueueScreen extends StatefulWidget {
 class _QueueScreenState extends State<QueueScreen> {
   PlaneQueue? _queue;
   Object? _loadError;
+  Timer? _refresh;
+  bool _loading = false;
+  int _revision = 0;
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _refresh = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
+    if (_loading || _busy) return;
+    final revision = _revision;
+    _loading = true;
     try {
       final q = await widget.client.planeQueue();
-      if (!mounted) return;
+      if (!mounted || revision != _revision) return;
       setState(() {
         _queue = q;
         _loadError = null;
@@ -50,6 +65,8 @@ class _QueueScreenState extends State<QueueScreen> {
           ),
         );
       }
+    } finally {
+      _loading = false;
     }
   }
 
@@ -72,11 +89,16 @@ class _QueueScreenState extends State<QueueScreen> {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     var reload = false;
+    _revision++;
     setState(() => _busy = true);
     try {
       final q = await call();
       if (!mounted) return;
-      setState(() => _queue = q);
+      setState(() {
+        _queue = q;
+        _loadError = null;
+      });
+      messenger.showSnackBar(SnackBar(content: Text(l10n.situationDone)));
     } catch (err) {
       if (!mounted) return;
       if (err is GatewayException && err.code == 'no_such_plan') {
@@ -123,6 +145,7 @@ class _QueueScreenState extends State<QueueScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         children: [
           if (_busy) const LinearProgressIndicator(key: Key('queue-progress')),
           Padding(
@@ -180,6 +203,18 @@ class _QueueScreenState extends State<QueueScreen> {
               key: Key('queue-steps-${e.id}'),
             ),
           if (e.held) Chip(label: Text(l10n.queueHeld)),
+          TextButton.icon(
+            key: Key('queue-toggle-${e.id}'),
+            onPressed: _busy
+                ? null
+                : () => _move(
+                    e,
+                    e.held ? PlaneQueueVerb.resume : PlaneQueueVerb.hold,
+                  ),
+            icon: Icon(e.held ? Icons.play_arrow : Icons.pause),
+            label: Text(e.held ? l10n.queueResume : l10n.queueHold),
+          ),
+          if (!e.held && e.status == 'blocked') Text(l10n.queueBlockedNote),
         ],
       ),
       trailing: PopupMenuButton<PlaneQueueVerb>(

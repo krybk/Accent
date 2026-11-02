@@ -39,6 +39,7 @@ class _Bubble {
   final StringBuffer text = StringBuffer();
   String? caption;
   String? error;
+  String? activity;
 }
 
 class ChatScreen extends StatefulWidget {
@@ -54,7 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _bubbles = <_Bubble>[];
   final _controller = TextEditingController();
   String? _sessionId;
-  String _tier = 'opus';
+  String _tier = 'codex';
   StreamSubscription<PlaneChatEvent>? _sub;
 
   bool get _streaming => _sub != null;
@@ -93,15 +94,20 @@ class _ChatScreenState extends State<ChatScreen> {
                   case PlaneChatSession():
                     _sessionId = event.sessionId;
                   case PlaneChatDelta():
+                    assistant.activity = null;
                     assistant.text.write(event.text);
+                  case PlaneChatActivity():
+                    assistant.activity = event.text;
                   case PlaneChatDone():
                     _sessionId = event.sessionId;
+                    assistant.activity = null;
                     assistant.caption = l10n.chatDoneCaption(
                       event.model,
                       formatTokens(event.inputTokens),
                       formatTokens(event.outputTokens),
                     );
                   case PlaneChatError():
+                    assistant.activity = null;
                     assistant.error = describeChatError(l10n, event);
                 }
               });
@@ -109,7 +115,10 @@ class _ChatScreenState extends State<ChatScreen> {
             onError: (Object error) {
               if (!mounted) return;
               final l10n = AppLocalizations.of(context);
-              setState(() => assistant.error = describeChatError(l10n, error));
+              setState(() {
+                assistant.activity = null;
+                assistant.error = describeChatError(l10n, error);
+              });
             },
             onDone: () {
               if (!mounted) return;
@@ -131,7 +140,8 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(bubble.text.toString()),
+              SelectableText(bubble.text.toString()),
+              if (bubble.activity != null) Text(l10n.chatWorking),
               if (bubble.caption != null)
                 Text(bubble.caption!, style: theme.textTheme.bodySmall),
               if (bubble.error != null)
@@ -163,10 +173,15 @@ class _ChatScreenState extends State<ChatScreen> {
     final l10n = AppLocalizations.of(context);
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Text(l10n.chatDirectAccess),
+        ),
         Row(
           children: [
             SegmentedButton<String>(
               segments: [
+                ButtonSegment(value: 'codex', label: Text(l10n.chatTierCodex)),
                 ButtonSegment(value: 'opus', label: Text(l10n.chatTierOpus)),
                 ButtonSegment(
                   value: 'sonnet',
@@ -174,7 +189,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ],
               selected: {_tier},
-              onSelectionChanged: (s) => setState(() => _tier = s.first),
+              onSelectionChanged: _streaming
+                  ? null
+                  : (s) => setState(() {
+                      if (_tier != s.first) {
+                        _tier = s.first;
+                        _sessionId = null;
+                        _bubbles.clear();
+                      }
+                    }),
             ),
             IconButton(
               key: const Key('chat-new'),

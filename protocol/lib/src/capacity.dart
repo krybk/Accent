@@ -16,6 +16,9 @@ class PlaneHostLoad {
     this.memPct,
     this.diskPct,
     this.diskFreeGb,
+    this.temperatureC,
+    this.disks = const [],
+    this.sensors = const [],
   });
 
   final String name;
@@ -25,6 +28,9 @@ class PlaneHostLoad {
   final double? memPct;
   final double? diskPct;
   final double? diskFreeGb;
+  final double? temperatureC;
+  final List<PlaneDisk> disks;
+  final List<PlaneSensor> sensors;
 
   factory PlaneHostLoad.fromJson(String name, Map<String, dynamic> json) =>
       PlaneHostLoad(
@@ -35,6 +41,9 @@ class PlaneHostLoad {
         memPct: _dbl(json['mem_pct']),
         diskPct: _dbl(json['disk_pct']),
         diskFreeGb: _dbl(json['disk_free_gb']),
+        temperatureC: _dbl(json['temperature_c']),
+        disks: _disks(json['disks']),
+        sensors: _sensors(json['sensors']),
       );
 }
 
@@ -117,6 +126,9 @@ class PlaneCapacity {
     this.memTotalMb,
     this.diskPct,
     this.diskFreeGb,
+    this.temperatureC,
+    this.disks = const [],
+    this.sensors = const [],
     this.diskHoursLeft,
     this.hosts = const [],
     this.subscriptionReason,
@@ -139,6 +151,9 @@ class PlaneCapacity {
   final double? memTotalMb;
   final double? diskPct;
   final double? diskFreeGb;
+  final double? temperatureC;
+  final List<PlaneDisk> disks;
+  final List<PlaneSensor> sensors;
   final double? diskHoursLeft;
   final List<PlaneHostLoad> hosts;
   final String? subscriptionReason;
@@ -165,6 +180,9 @@ class PlaneCapacity {
       memTotalMb: _dbl(state['mem_total_mb']),
       diskPct: _dbl(state['disk_pct']),
       diskFreeGb: _dbl(state['disk_free_gb']),
+      temperatureC: _dbl(state['temperature_c']),
+      disks: _disks(state['disks']),
+      sensors: _sensors(state['sensors']),
       diskHoursLeft: _dbl(state['disk_hours_left']),
       hosts: [
         for (final e in _map(state['hosts']).entries)
@@ -190,3 +208,48 @@ class PlaneCapacity {
     );
   }
 }
+
+class PlaneDisk {
+  const PlaneDisk({
+    required this.device,
+    required this.mount,
+    this.totalGb,
+    this.freeGb,
+    this.usedPct,
+  });
+  final String device;
+  final String mount;
+  final double? totalGb;
+  final double? freeGb;
+  final double? usedPct;
+  factory PlaneDisk.fromJson(Map<String, dynamic> json) => PlaneDisk(
+    device: json['device'] as String? ?? '',
+    mount: json['mount'] as String? ?? '',
+    totalGb: _dbl(json['total_gb']),
+    freeGb: _dbl(json['free_gb']),
+    usedPct: _dbl(json['used_pct']),
+  );
+}
+
+class PlaneSensor {
+  const PlaneSensor({required this.name, this.celsius});
+  final String name;
+  final double? celsius;
+  factory PlaneSensor.fromJson(Map<String, dynamic> json) => PlaneSensor(
+    name: json['name'] as String? ?? '',
+    celsius: _dbl(json['celsius']),
+  );
+}
+
+List<PlaneDisk> _disks(Object? json) => json is List
+    ? [
+        for (final e in json)
+          if (e is Map) PlaneDisk.fromJson(_map(e)),
+      ]
+    : const [];
+List<PlaneSensor> _sensors(Object? json) => json is List
+    ? [
+        for (final e in json)
+          if (e is Map) PlaneSensor.fromJson(_map(e)),
+      ]
+    : const [];

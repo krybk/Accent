@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:accent_protocol/protocol.dart';
 import 'package:flutter/material.dart';
 
@@ -28,14 +30,25 @@ class CapacityScreen extends StatefulWidget {
 class _CapacityScreenState extends State<CapacityScreen> {
   PlaneCapacity? _data;
   Object? _loadError;
+  Timer? _refresh;
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _refresh = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
+    if (_loading) return;
+    _loading = true;
     try {
       final d = await widget.client.planeCapacity();
       if (!mounted) return;
@@ -56,6 +69,8 @@ class _CapacityScreenState extends State<CapacityScreen> {
           ),
         );
       }
+    } finally {
+      _loading = false;
     }
   }
 
@@ -111,6 +126,17 @@ class _CapacityScreenState extends State<CapacityScreen> {
           ),
           line(l10n.capacityDisk(f(d.diskPct), f(d.diskFreeGb))),
           line(l10n.capacityCores(f(d.cores))),
+          line(l10n.capacityTemperature(f(d.temperatureC))),
+          for (final disk in d.disks)
+            line(
+              l10n.capacityVolume(
+                disk.device,
+                disk.mount,
+                f(disk.usedPct),
+                f(disk.freeGb),
+                f(disk.totalGb),
+              ),
+            ),
           for (final h in d.hosts)
             ListTile(
               key: Key('capacity-host-${h.name}'),
@@ -126,6 +152,17 @@ class _CapacityScreenState extends State<CapacityScreen> {
                           l10n.valueUnknown,
                         ),
                         l10n.capacityDisk(f(h.diskPct), f(h.diskFreeGb)),
+                        l10n.capacityTemperature(f(h.temperatureC)),
+                        for (final sensor in h.sensors)
+                          '${sensor.name}: ${f(sensor.celsius)} °C',
+                        for (final disk in h.disks)
+                          l10n.capacityVolume(
+                            disk.device,
+                            disk.mount,
+                            f(disk.usedPct),
+                            f(disk.freeGb),
+                            f(disk.totalGb),
+                          ),
                       ].join('\n'),
               ),
             ),

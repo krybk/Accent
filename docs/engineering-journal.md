@@ -391,3 +391,23 @@ A missing plane socket means no plane is configured: `/v1/plane/*` answers 404
 `plane_not_configured`, the same as with no `PLANE_SOCKET` at all, so the app
 says "not configured" rather than "unavailable". A path that exists but refuses
 a connection is still 503 `plane_unavailable`: that plane is down, not absent.
+
+
+## 2026-11-02. Direct Codex chat and complete host metrics
+
+Accent 0.4.0 adds an explicit Codex chat choice, provider-isolated resumable
+sessions and tool activity. Authenticated server chats can act on files and
+services directly; they no longer have the old read-only prompt. The Python
+plane supplies the provider's real model ID, token counts and an unknown cost
+when Codex does not report one. Changing the provider starts a new conversation.
+The matching server change lives in aimanager's plane API, deployed directly.
+
+Hardware telemetry now retains mounted physical volumes and hwmon sensors
+rather than discarding everything except the tightest disk admission figure.
+CPU temperature is the hottest CPU sensor; missing sensors remain unknown.
+The scheduler's existing admission checks retain their behavior. Situation now
+shows current slice/task/subtask progress and completed orchestration steps in
+the preceding hour, which is a measured activity rate, not a completion ETA.
+Hold state is independent of the displayed scheduler state, and fresh reads
+reflect resume immediately. Queue and Load refresh every 15 seconds; stale
+requests cannot overwrite a newer queue action or Situation refresh.
