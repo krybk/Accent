@@ -6,6 +6,7 @@ import 'package:accent/models/server_profile.dart';
 import 'package:accent/screens/add_server_screen.dart';
 import 'package:accent/screens/bootstrap_screen.dart';
 import 'package:accent/screens/capacity_screen.dart';
+import 'package:accent/screens/progress_screen.dart';
 import 'package:accent/screens/queue_screen.dart';
 import 'package:accent/screens/server_home_screen.dart';
 import 'package:accent/screens/servers_screen.dart';
@@ -365,6 +366,7 @@ void main() {
             'state': {'running': 1},
           },
           '/v1/plane/stats' => {'days': 7},
+          '/v1/plane/progress' => {'plans': []},
           _ => null,
         };
         if (body == null) return http.Response('{}', 404);
@@ -386,7 +388,7 @@ void main() {
 
       await tester.tap(find.text('Deployed'));
       await tester.pumpAndSettle();
-      expect(find.byType(NavigationDestination), findsNWidgets(7));
+      expect(find.byType(NavigationDestination), findsNWidgets(8));
 
       await tester.tap(find.text('Queue'));
       await tester.pumpAndSettle();
@@ -410,6 +412,16 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byType(StatsScreen), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('Progress'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ProgressScreen), findsOneWidget);
+      expect(find.text('No open plans'), findsOneWidget);
     },
   );
 

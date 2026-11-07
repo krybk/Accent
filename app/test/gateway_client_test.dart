@@ -700,5 +700,22 @@ void main() {
       expect(seen.url.path, '/v1/plane/stats');
       expect(stats.days, 7);
     });
+
+    test('planeProgress', () async {
+      late http.Request seen;
+      final client = _client((request) async {
+        seen = request;
+        return _json({
+          'generated_at': '2026-11-07T03:00:00Z',
+          'plans': [
+            {'issue': 288, 'project': 'Hopdeck', 'phase': 'working'},
+          ],
+        });
+      });
+      final progress = await client.planeProgress();
+      expect(seen.method, 'GET');
+      expect(seen.url.path, '/v1/plane/progress');
+      expect(progress.plans.single.project, 'Hopdeck');
+    });
   });
 }

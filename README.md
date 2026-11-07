@@ -9,7 +9,9 @@ Android-приложение для управления серверной ИИ
 - `app/` — приложение Flutter; `gateway/` — серверный шлюз на Dart;
   `protocol/` — общие типы сообщений.
 - Экран Situation показывает состояние сервера и вопросы, требующие внимания;
-  Queue позволяет менять порядок и приостанавливать планы.
+  Queue позволяет менять порядок и приостанавливать планы; Прогресс —
+  таблица «Проект / Сделано / Что дальше / Прогноз» по каждому плану,
+  обновляется кнопкой.
 - Выпуск приложения: [Releases](https://github.com/krybk/Accent/releases).
   Правила разработки: [docs/contributing.md](docs/contributing.md).
 
@@ -82,6 +84,11 @@ moves a plan up, down, to the top or to the end, or holds and resumes it.
 The Situation screen, the first on a server, shows what needs the owner's
 action, why agents are idle, the plans' states, the build-slot queue and the
 last 24 hours or 7 days, and acts on a plan from there.
+The Progress screen is one table, a row per open plan: requirements done,
+the current stage's tasks left and the agents on them, and the forecast to
+the end of the stage and of the whole Issue (or why there is none: paused,
+blocked, waiting for the owner). The plane computes it when asked, so the
+refresh button is the refresh.
 
 ## Releases
 

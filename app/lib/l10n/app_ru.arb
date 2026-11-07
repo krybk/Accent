@@ -616,5 +616,24 @@
         "type": "String"
       }
     }
-  }
+  },
+  "navProgress": "Прогресс",
+  "progressColProject": "Проект",
+  "progressColDone": "Сделано",
+  "progressColNext": "Что дальше",
+  "progressColForecast": "Прогноз",
+  "progressRefresh": "Обновить",
+  "progressEmpty": "Открытых планов нет",
+  "progressDone": "{pct}% требований",
+  "progressTasksLeft": "в текущем этапе {left, plural, one{осталась {left} задача} few{осталось {left} задачи} other{осталось {left} задач}} из {total}",
+  "progressNoTasks": "0 задач",
+  "progressAllDone": "все задачи этапа ({total}) сделаны",
+  "progressAgents": "{count, plural, one{работает {count} агент} few{работают {count} агента} other{работают {count} агентов}}",
+  "progressEtaSlice": "~{hours} ч до конца этапа",
+  "progressEtaIssue": "~{days} {n, plural, one{день} few{дня} many{дней} other{дня}} до конца всего Issue",
+  "progressEtaUnknown": "данных для прогноза пока мало",
+  "progressPaused": "на паузе",
+  "progressBlocked": "заблокирован (ждёт владельца: {reason})",
+  "progressWaitingOwner": "ждёт ответа владельца: {question}",
+  "progressUpdated": "Обновлено {at}"
 }

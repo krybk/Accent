@@ -411,3 +411,17 @@ the preceding hour, which is a measured activity rate, not a completion ETA.
 Hold state is independent of the displayed scheduler state, and fresh reads
 reflect resume immediately. Queue and Load refresh every 15 seconds; stale
 requests cannot overwrite a newer queue action or Situation refresh.
+
+
+## 2026-11-07. Progress table
+
+Accent 0.5.0 adds a Progress destination: the owner's table «Проект /
+Сделано / Что дальше / Прогноз» over `GET /v1/plane/progress`. The plane
+computes each row on request from the same forecast as `aimgr stats` and the
+same picture as `aimgr stalls --now` (requirements done, the running slice's
+open tasks, sessions, slice and whole-Issue ETAs, the block reason or the
+owner's question), so the refresh button and pull-to-refresh are the refresh
+and the screen does not poll. The app only words the plane's `phase`
+(working, paused, blocked, waiting_owner, waiting) and formats numbers for the
+locale; an ETA the plane cannot give stays "not enough data" rather than a
+guess.

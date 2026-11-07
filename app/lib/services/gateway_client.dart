@@ -146,6 +146,11 @@ class GatewayClient {
     await _send('GET', '/v1/plane/stats', const Duration(seconds: 30)),
   );
 
+  /// `GET /v1/plane/progress`: the progress table, computed on each call.
+  Future<PlaneProgress> planeProgress() async => PlaneProgress.fromJson(
+    await _send('GET', '/v1/plane/progress', const Duration(seconds: 30)),
+  );
+
   /// `GET /v1/plane/stalls[?hours=N]`: plan stalls, waits and attention items.
   Future<PlaneStalls> planeStalls({int hours = 24}) async =>
       PlaneStalls.fromJson(

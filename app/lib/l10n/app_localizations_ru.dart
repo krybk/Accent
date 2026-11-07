@@ -917,4 +917,101 @@ class AppLocalizationsRu extends AppLocalizations {
   String situationRunningJob(String item, String model) {
     return 'Выполняется: $item · $model';
   }
+
+  @override
+  String get navProgress => 'Прогресс';
+
+  @override
+  String get progressColProject => 'Проект';
+
+  @override
+  String get progressColDone => 'Сделано';
+
+  @override
+  String get progressColNext => 'Что дальше';
+
+  @override
+  String get progressColForecast => 'Прогноз';
+
+  @override
+  String get progressRefresh => 'Обновить';
+
+  @override
+  String get progressEmpty => 'Открытых планов нет';
+
+  @override
+  String progressDone(String pct) {
+    return '$pct% требований';
+  }
+
+  @override
+  String progressTasksLeft(int left, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      left,
+      locale: localeName,
+      other: 'осталось $left задач',
+      few: 'осталось $left задачи',
+      one: 'осталась $left задача',
+    );
+    return 'в текущем этапе $_temp0 из $total';
+  }
+
+  @override
+  String get progressNoTasks => '0 задач';
+
+  @override
+  String progressAllDone(int total) {
+    return 'все задачи этапа ($total) сделаны';
+  }
+
+  @override
+  String progressAgents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'работают $count агентов',
+      few: 'работают $count агента',
+      one: 'работает $count агент',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String progressEtaSlice(String hours) {
+    return '~$hours ч до конца этапа';
+  }
+
+  @override
+  String progressEtaIssue(String days, num n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'дня',
+      many: 'дней',
+      few: 'дня',
+      one: 'день',
+    );
+    return '~$days $_temp0 до конца всего Issue';
+  }
+
+  @override
+  String get progressEtaUnknown => 'данных для прогноза пока мало';
+
+  @override
+  String get progressPaused => 'на паузе';
+
+  @override
+  String progressBlocked(String reason) {
+    return 'заблокирован (ждёт владельца: $reason)';
+  }
+
+  @override
+  String progressWaitingOwner(String question) {
+    return 'ждёт ответа владельца: $question';
+  }
+
+  @override
+  String progressUpdated(String at) {
+    return 'Обновлено $at';
+  }
 }

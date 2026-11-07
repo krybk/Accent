@@ -7,16 +7,18 @@ import '../services/stalls_controller.dart';
 import 'capacity_screen.dart';
 import 'chat_screen.dart';
 import 'plane_screen.dart';
+import 'progress_screen.dart';
 import 'queue_screen.dart';
 import 'situation_screen.dart';
 import 'stats_screen.dart';
 import 'usage_screen.dart';
 
 /// The home of one bootstrapped server: the situation, the plane, the token
-/// usage, the chat and the plan queue, each a destination of the bottom bar.
+/// usage, the chat, the plan queue, load, stats and the progress table, each a
+/// destination of the bottom bar.
 ///
 /// The gateway client is obtained once, from the factory, and closed when the
-/// screen goes away. Plane, Usage and Queue are built only while selected, so a
+/// screen goes away. Plane, Usage, Queue and the rest are built only while selected, so a
 /// hidden tab does not poll the gateway. The chat is kept alive, so its
 /// conversation and a running answer survive a switch to another tab. The
 /// Situation screen is likewise built only while selected, but its controller
@@ -60,7 +62,7 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
     super.dispose();
   }
 
-  // Situation, Plane, Usage, Chat, Queue, Load, Stats -- the order of the IndexedStack below.
+  // Situation, Plane, Usage, Chat, Queue, Load, Stats, Progress -- the order of the IndexedStack below.
   List<(IconData, String)> _destinations(AppLocalizations l10n) => [
     (Icons.notifications_active_outlined, l10n.navSituation),
     (Icons.dashboard_outlined, l10n.navPlane),
@@ -69,6 +71,7 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
     (Icons.format_list_numbered, l10n.navQueue),
     (Icons.memory, l10n.navCapacity),
     (Icons.insights, l10n.navStats),
+    (Icons.table_chart_outlined, l10n.navProgress),
   ];
 
   @override
@@ -109,6 +112,7 @@ class _ServerHomeScreenState extends State<ServerHomeScreen> {
               _index == 4 ? QueueScreen(client: c) : const SizedBox.shrink(),
               _index == 5 ? CapacityScreen(client: c) : const SizedBox.shrink(),
               _index == 6 ? StatsScreen(client: c) : const SizedBox.shrink(),
+              _index == 7 ? ProgressScreen(client: c) : const SizedBox.shrink(),
             ],
           );
         },

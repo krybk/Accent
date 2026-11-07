@@ -783,5 +783,93 @@
         "type": "String"
       }
     }
+  },
+  "navProgress": "Progress",
+  "progressColProject": "Project",
+  "progressColDone": "Done",
+  "progressColNext": "Next",
+  "progressColForecast": "Forecast",
+  "progressRefresh": "Refresh",
+  "progressEmpty": "No open plans",
+  "progressDone": "{pct}% of requirements",
+  "@progressDone": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "progressTasksLeft": "{left, plural, =1{1 task left} other{{left} tasks left}} of {total} in the current stage",
+  "@progressTasksLeft": {
+    "placeholders": {
+      "left": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "progressNoTasks": "0 tasks",
+  "progressAllDone": "all {total} tasks of the stage done",
+  "@progressAllDone": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "progressAgents": "{count, plural, =1{1 agent working} other{{count} agents working}}",
+  "@progressAgents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "progressEtaSlice": "~{hours} h to the end of the stage",
+  "@progressEtaSlice": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "progressEtaIssue": "~{days} {n, plural, =1{day} other{days}} to the end of the whole Issue",
+  "@progressEtaIssue": {
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "n": {
+        "type": "num"
+      }
+    }
+  },
+  "progressEtaUnknown": "not enough data yet",
+  "progressPaused": "paused",
+  "progressBlocked": "blocked (waiting for the owner: {reason})",
+  "@progressBlocked": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "progressWaitingOwner": "waiting for the owner's answer: {question}",
+  "@progressWaitingOwner": {
+    "placeholders": {
+      "question": {
+        "type": "String"
+      }
+    }
+  },
+  "progressUpdated": "Updated {at}",
+  "@progressUpdated": {
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -1613,6 +1613,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Running: {item} · {model}'**
   String situationRunningJob(String item, String model);
+
+  /// No description provided for @navProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get navProgress;
+
+  /// No description provided for @progressColProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get progressColProject;
+
+  /// No description provided for @progressColDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get progressColDone;
+
+  /// No description provided for @progressColNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get progressColNext;
+
+  /// No description provided for @progressColForecast.
+  ///
+  /// In en, this message translates to:
+  /// **'Forecast'**
+  String get progressColForecast;
+
+  /// No description provided for @progressRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get progressRefresh;
+
+  /// No description provided for @progressEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No open plans'**
+  String get progressEmpty;
+
+  /// No description provided for @progressDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% of requirements'**
+  String progressDone(String pct);
+
+  /// No description provided for @progressTasksLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{left, plural, =1{1 task left} other{{left} tasks left}} of {total} in the current stage'**
+  String progressTasksLeft(int left, int total);
+
+  /// No description provided for @progressNoTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'0 tasks'**
+  String get progressNoTasks;
+
+  /// No description provided for @progressAllDone.
+  ///
+  /// In en, this message translates to:
+  /// **'all {total} tasks of the stage done'**
+  String progressAllDone(int total);
+
+  /// No description provided for @progressAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 agent working} other{{count} agents working}}'**
+  String progressAgents(int count);
+
+  /// No description provided for @progressEtaSlice.
+  ///
+  /// In en, this message translates to:
+  /// **'~{hours} h to the end of the stage'**
+  String progressEtaSlice(String hours);
+
+  /// No description provided for @progressEtaIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'~{days} {n, plural, =1{day} other{days}} to the end of the whole Issue'**
+  String progressEtaIssue(String days, num n);
+
+  /// No description provided for @progressEtaUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'not enough data yet'**
+  String get progressEtaUnknown;
+
+  /// No description provided for @progressPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'paused'**
+  String get progressPaused;
+
+  /// No description provided for @progressBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'blocked (waiting for the owner: {reason})'**
+  String progressBlocked(String reason);
+
+  /// No description provided for @progressWaitingOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for the owner\'s answer: {question}'**
+  String progressWaitingOwner(String question);
+
+  /// No description provided for @progressUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {at}'**
+  String progressUpdated(String at);
 }
 
 class _AppLocalizationsDelegate

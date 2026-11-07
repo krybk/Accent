@@ -916,4 +916,97 @@ class AppLocalizationsEn extends AppLocalizations {
   String situationRunningJob(String item, String model) {
     return 'Running: $item · $model';
   }
+
+  @override
+  String get navProgress => 'Progress';
+
+  @override
+  String get progressColProject => 'Project';
+
+  @override
+  String get progressColDone => 'Done';
+
+  @override
+  String get progressColNext => 'Next';
+
+  @override
+  String get progressColForecast => 'Forecast';
+
+  @override
+  String get progressRefresh => 'Refresh';
+
+  @override
+  String get progressEmpty => 'No open plans';
+
+  @override
+  String progressDone(String pct) {
+    return '$pct% of requirements';
+  }
+
+  @override
+  String progressTasksLeft(int left, int total) {
+    String _temp0 = intl.Intl.pluralLogic(
+      left,
+      locale: localeName,
+      other: '$left tasks left',
+      one: '1 task left',
+    );
+    return '$_temp0 of $total in the current stage';
+  }
+
+  @override
+  String get progressNoTasks => '0 tasks';
+
+  @override
+  String progressAllDone(int total) {
+    return 'all $total tasks of the stage done';
+  }
+
+  @override
+  String progressAgents(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count agents working',
+      one: '1 agent working',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String progressEtaSlice(String hours) {
+    return '~$hours h to the end of the stage';
+  }
+
+  @override
+  String progressEtaIssue(String days, num n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'days',
+      one: 'day',
+    );
+    return '~$days $_temp0 to the end of the whole Issue';
+  }
+
+  @override
+  String get progressEtaUnknown => 'not enough data yet';
+
+  @override
+  String get progressPaused => 'paused';
+
+  @override
+  String progressBlocked(String reason) {
+    return 'blocked (waiting for the owner: $reason)';
+  }
+
+  @override
+  String progressWaitingOwner(String question) {
+    return 'waiting for the owner\'s answer: $question';
+  }
+
+  @override
+  String progressUpdated(String at) {
+    return 'Updated $at';
+  }
 }

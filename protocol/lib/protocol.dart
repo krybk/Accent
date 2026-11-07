@@ -10,5 +10,6 @@ export 'src/capacity.dart';
 export 'src/catalog.dart';
 export 'src/chat.dart';
 export 'src/plane.dart';
+export 'src/progress.dart';
 export 'src/stalls.dart';
 export 'src/stats.dart';
